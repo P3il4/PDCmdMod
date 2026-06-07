@@ -20,13 +20,16 @@ require("expeditions")
 local function HandleIntroduction(mode)
     uim.sendMessage("Main", [[Welcome to PDCmdMod by Perru (@perru_ on discord). Run 'pdcmdmod credits" to see full credits!
 Open the command line by pressing F10. This message can be viewed again by running the command 'pdcmdmod'.
-
+ 
 Run 'pdcmdmod list [page]' to explore the command list alongside their description.
 Run 'pdcmdmod shortlist' to see a short list of every command in PDCmdMod.
 Run 'pdcmdmod help [command ...]' to get a command's help. It works on any command and subcommand.
-
-About the command system: when an argument must contain spaces, you can use quotes to wrap it as a single argument. Example: 'give name "Scrap Metal" 5'.]],
-    mode, 33.0, true)
+ 
+About the command system: when an argument must contain spaces, you can use quotes to wrap it as a single argument. Example: 'give name "Scrap Metal" 5'.
+Tip: you can use FModel to browse through game files (in order to get pathes for different commands), but is not required to use core features of this mod.
+ 
+This project is under the MIT license. A copy has been included in the LICENSE file.]],
+    mode, 44.0, true)
 end
 
 

@@ -1,90 +1,91 @@
 local uim = require("uimanager")
 local cm = require("commandmanager")
+local give = require("give")
 
-
-local cmd = cm.MANAGER:register(
-    "deletehand",
+cm.MANAGER:register(
+    "duplicatehand",
     {
-        description = "Deletes item in hand. Only works on droppable items.",
-        args_syntax = nil,
-        flags_syntax = nil
+        description = "Duplicate the item currently in hand.",
+        args_syntax = "[count]"
     },
     function(args, flags)
         local im = FindFirstOf("BP_InventoryManager_C")
         if not im or not im:IsValid() then
-            print("[DeleteHand] InventoryManager not found")
+            uim.sendMessage("Duplicate", "InventoryManager not found", uim.MessageTypes.ERR)
             return true
         end
 
-        -- Get the hand slot and container
         local handSlotOut = {}
         local handContainerOut = {}
-        local ok, err = pcall(function()
-            im:GetHandSlot(handSlotOut, handContainerOut)
-        end)
+        im:GetHandSlot(handSlotOut, handContainerOut)
 
         local handSlot = handSlotOut["Hand Slot"]
-        local handContainer = handContainerOut["Hand Container"]
-
-        print("[DeleteHand] Hand slot: " .. tostring(handSlot))
-        print("[DeleteHand] Hand container: " .. tostring(handContainer))
-
         if not handSlot or not handSlot:IsValid() then
-            print("[DeleteHand] No item in hand")
+            uim.sendMessage("Duplicate", "Nothing in hand", uim.MessageTypes.ALERT)
             return true
         end
 
-        pcall(function() print("[DeleteHand] GetFullName: " .. handSlot:GetFullName()) end)
-        pcall(function() print("[DeleteHand] ItemInstance: " .. tostring(handSlot.ItemInstance)) end)
-        pcall(function() print("[DeleteHand] Instance: " .. tostring(handSlot.Instance)) end)
-        pcall(function() print("[DeleteHand] Item: " .. tostring(handSlot.Item)) end)
+        local count = tonumber(args[1]) or 1
 
-        local instance = handSlot.ItemInstance
-        local containerOut = {}
-        pcall(function() im:GetItemInstanceContainer(instance, containerOut) end)
-        local container = containerOut["ReturnValue"] or containerOut["Container"]
-        print("[DeleteHand] Container: " .. tostring(container))
-
-
-        -- Count world items before drop
+        -- Snapshot des WorldItems avant le drop
         local before = FindAllOf("BP_WorldItem_C")
-        local beforeCount = before and #before or 0
-
-        -- Force dropping to be allowed
-        pcall(function() im:SetItemDroppingAllowed(true) end)
-
-        -- Now try dropping
-        local dropSuccessOut = {}
-        local worldActorOut = {}
-        im:PlayerDropHandItem(dropSuccessOut, worldActorOut)
-        print("[DeleteHand] Drop success: " .. tostring(dropSuccessOut["Drop Success"]))
-
-        -- Restore normal drop rules
-        -- pcall(function() im:SetItemDroppingAllowed(false) end)
-
-        -- Find new world item
-        local after = FindAllOf("BP_WorldItem_C")
-        print("[DeleteHand] Before: " .. beforeCount .. " After: " .. (after and #after or 0))
-
-        if after and #after > beforeCount then
-            -- Find the new one
-            local beforeSet = {}
-            if before then
-                for _, v in ipairs(before) do
-                    local ok, name = pcall(function() return v:GetFullName() end)
-                    if ok then beforeSet[name] = true end
-                end
+        local beforeSet = {}
+        if before then
+            for _, v in ipairs(before) do
+                local ok, name = pcall(function() return v:GetFullName() end)
+                if ok then beforeSet[name] = true end
             end
+        end
+
+        -- Trouver le nouveau WorldItem
+        local after = FindAllOf("BP_WorldItem_C")
+        local newWorldItem = nil
+        if after then
             for _, v in ipairs(after) do
                 local ok, name = pcall(function() return v:GetFullName() end)
                 if ok and not beforeSet[name] then
-                    print("[DeleteHand] New world item: " .. name)
-                    pcall(function() v:K2_DestroyActor() end)
-                    print("[DeleteHand] Destroyed!")
+                    newWorldItem = v
                     break
                 end
             end
         end
+
+        if not newWorldItem then
+            uim.sendMessage("Duplicate", "Could not find dropped WorldItem", uim.MessageTypes.ERR)
+            return true
+        end
+
+        -- Lire l'archétype depuis le WorldItem
+        local arch = nil
+        pcall(function()
+            local slot = newWorldItem.ItemSlot
+            if slot and slot.ItemInstance and slot.ItemInstance.Archetype then
+                arch = slot.ItemInstance.Archetype
+            end
+        end)
+        if not arch then
+            pcall(function()
+                if newWorldItem.ItemInstance and newWorldItem.ItemInstance.Archetype then
+                    arch = newWorldItem.ItemInstance.Archetype
+                end
+            end)
+        end
+        if not arch then
+            pcall(function()
+                arch = newWorldItem.Archetype
+            end)
+        end
+
+        -- Détruire le WorldItem droppé
+        pcall(function() newWorldItem:K2_DestroyActor() end)
+
+        if not arch then
+            uim.sendMessage("Duplicate", "Could not read archetype from WorldItem", uim.MessageTypes.ERR)
+            return true
+        end
+
+        -- Donner count+1 (on a droppé l'original, donc on remet 1 + les copies)
+        give.GiveArchetype(im, arch, count)
 
         return true
     end

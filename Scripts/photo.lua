@@ -54,6 +54,8 @@ local PRESETS = {
     ["double"] = {MovementSensitivity=15, RotationSensitivity=1.0, bUseMaximumDistance=false, description="Double speed, no distance limit."},
     ["fast"] = {MovementSensitivity=75, RotationSensitivity=1.0, bUseMaximumDistance=false, description="Fast movement for screenshots from a distance."},
     ["ultrafast"] = {MovementSensitivity=375, RotationSensitivity=1.0, bUseMaximumDistance=false, description="Extremely fast movement for screenshots across the map."},
+    ["exp"] = {MovementSensitivity=375, RotationSensitivity=1.0, bUseMaximumDistance=true, description="Alias of 'expedition' preset."},
+    ["expedition"] = {MovementSensitivity=375, RotationSensitivity=1.0, bUseMaximumDistance=true, description="Expeditions legal copy of the 'ultrafast' preset (limits on)."},
     ["ultraultrafast"] = {MovementSensitivity=10000, RotationSensitivity=1.0, bUseMaximumDistance=false, description="Have you lost your mind?"}
 }
 
@@ -221,9 +223,9 @@ local cmd_limits = cmd:branch(
 )
 
 local cmd_preset = cmd:branch(
-    "preset",
+    "mode",
     {
-        description = "Apply preset.",
+        description = "Apply preset settings (movement / limit settings).",
         args_syntax = "<preset>",
         flags_syntax = nil
     },

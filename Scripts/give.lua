@@ -526,3 +526,13 @@ local cmd_name = cmd:branch(
         return HandleName(args, flags)
     end
 )
+
+
+
+-- SHARE STUFF
+
+local give_module = {}
+
+give_module.GiveArchetype = GiveArchetype
+
+return give_module
