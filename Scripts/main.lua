@@ -15,6 +15,7 @@ require("iwdebug")
 require("dlcgarage")
 require("bookmarks")
 require("expeditions")
+require("loadbutton")
 
 
 local function HandleIntroduction(mode)
@@ -47,7 +48,7 @@ local function HandleShortlist(mode)
 end
 
 
-local function HandleList(mode, page)
+local function HandleList(mode, page, ue4ssprint)
 
     -- INIT
     local commands = cm.MANAGER:commands()
@@ -72,15 +73,28 @@ local function HandleList(mode, page)
     end
 
     -- DISPLAY
-    if page ~= 0 then
-        uim.sendMessage("Main", ("\t"):rep(6) .. "[ PAGE " .. page .. " OF " .. totalPages .. " ]", mode, MESSAGE_DURATION, true)
+    local HEADER = "Commands from PDCmdMod by Perru (@perru_ on discord):\n  Help syntax: <mandatory> [optional]. Ellipsis means multiple/unknown subcommands/arguments.\n "
+    if ue4ssprint then
+        local msg = HEADER
+        for i = 1, #displayedCommands do
+            local command = displayedCommands[i]
+            msg = msg .. "  " .. command:get_usage(command.description ~= nil) .. "\n"
+        end
+        if page ~= 0 then
+            msg = ("\t"):rep(6) .. "[ PAGE " .. page .. " OF " .. totalPages .. " ]\n" .. msg
+        end
+        print("[PDCmdMod] [Main] " .. msg)
+    else
+        if page ~= 0 then
+            uim.sendMessage("Main", ("\t"):rep(6) .. "[ PAGE " .. page .. " OF " .. totalPages .. " ]", mode, MESSAGE_DURATION, true)
+        end
+        -- Go in reverse order because sendMessage on CHATLIKE is a queue
+        for i = #displayedCommands, 1, -1 do
+            local command = displayedCommands[i]
+            uim.sendMessage("Main", command:get_usage(command.description ~= nil), mode, MESSAGE_DURATION)
+        end
+        uim.sendMessage("Main", HEADER, mode, MESSAGE_DURATION, true)
     end
-    -- Go in reverse order because sendMessage on CHATLIKE is a queue
-    for i = #displayedCommands, 1, -1 do
-        local command = displayedCommands[i]
-        uim.sendMessage("Main", command:get_usage(command.description ~= nil), mode, MESSAGE_DURATION)
-    end
-    uim.sendMessage("Main", "Commands from PDCmdMod by Perru (@perru_ on discord):\n  Help syntax: <mandatory> [optional]. Ellipsis means multiple/unknown subcommands/arguments.\n ", mode, MESSAGE_DURATION, true)
 
 end
 
@@ -127,7 +141,7 @@ cmd_help:branch(
     {
         description = "Show a paginated list of every command in PDCmdMod alongside their description. Run 'pdcmdmod shortlist' for a non-paginated short list.",
         args_syntax = "[page]",
-        flags_syntax = "--showall"
+        flags_syntax = "--showall, --ue4ssprint"
     },
     function(args, flags)
         for idx, flag in ipairs(flags) do
@@ -140,7 +154,7 @@ cmd_help:branch(
         if flags and flags["showall"] then
             page = 0
         end
-        HandleList(uim.MessageTypes.CHATLIKE, page)
+        HandleList(uim.MessageTypes.CHATLIKE, page, flags and flags["ue4ssprint"])
         return true
     end
 )
