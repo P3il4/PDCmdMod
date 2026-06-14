@@ -1,7 +1,10 @@
-print("[PerruGiveMod] Mod loading!")
+print("[PDCmdMod] Mod loading!")
 
 local uim = require("uimanager")
 local cm = require("commandmanager")
+
+local msg = uim.newMessenger("Main")
+
 require("give")
 require("deletehand")
 require("unlocklogs")
@@ -16,10 +19,12 @@ require("dlcgarage")
 require("bookmarks")
 require("expeditions")
 require("loadbutton")
+require("tp")
+require("fatigue")
 
 
 local function HandleIntroduction(mode)
-    uim.sendMessage("Main", [[Welcome to PDCmdMod by Perru (@perru_ on discord). Run 'pdcmdmod credits" to see full credits!
+    local message = [[Welcome to PDCmdMod by Perru (@perru_ on discord). Run 'pdcmdmod credits" to see full credits!
 Open the command line by pressing F10. This message can be viewed again by running the command 'pdcmdmod'.
  
 Run 'pdcmdmod list [page]' to explore the command list alongside their description.
@@ -29,8 +34,9 @@ Run 'pdcmdmod help [command ...]' to get a command's help. It works on any comma
 About the command system: when an argument must contain spaces, you can use quotes to wrap it as a single argument. Example: 'give name "Scrap Metal" 5'.
 Tip: you can use FModel to browse through game files (in order to get pathes for different commands), but is not required to use core features of this mod.
  
-This project is under the MIT license. A copy has been included in the LICENSE file.]],
-    mode, 44.0, true)
+This project is under the MIT license. A copy has been included in the LICENSE file.]]
+
+    msg:feedback(message, uim.TIME.HELP, "\n")
 end
 
 
@@ -48,20 +54,74 @@ local function HandleShortlist(mode)
 end
 
 
-local function HandleList(mode, page, ue4ssprint)
+-- local function HandleList(mode, page, ue4ssprint)
 
-    -- INIT
+--     -- INIT
+--     local commands = cm.MANAGER:commands()
+--     local sortedCommands = {table.unpack(commands)}
+--     table.sort(sortedCommands, function(a, b) return a.name < b.name end)
+
+--     local MESSAGE_DURATION = 30.0
+--     local ENTRIES_PER_PAGE = 5
+--     local totalPages = math.ceil(#commands / ENTRIES_PER_PAGE)
+
+--     -- GET FUNCTION  LIST
+--     local displayedCommands = {}
+--     if page == nil or page < 0 or page > totalPages then
+--         uim.sendMessage("Main", "Invalid page number. Give a page between 1 and " .. tostring(totalPages) .. ".", mode, 8.0, true)  -- Allow page 0 as 'see all'
+--     else
+--         for i, command in ipairs(sortedCommands) do
+--             local entryPage = math.ceil(i / ENTRIES_PER_PAGE)
+--             if page == 0 or entryPage == page then
+--                 table.insert(displayedCommands, command)
+--             end
+--         end
+--     end
+
+--     -- DISPLAY
+--     local HEADER = "Commands from PDCmdMod by Perru (@perru_ on discord):\n  Help syntax: <mandatory> [optional]. Ellipsis means multiple/unknown subcommands/arguments.\n "
+--     if ue4ssprint then
+--         local msg = HEADER
+--         for i = 1, #displayedCommands do
+--             local command = displayedCommands[i]
+--             msg = msg .. "  " .. command:get_usage(command.description ~= nil) .. "\n"
+--         end
+--         if page ~= 0 then
+--             msg = ("\t"):rep(6) .. "[ PAGE " .. page .. " OF " .. totalPages .. " ]\n" .. msg
+--         end
+--         print("[PDCmdMod] [Main] " .. msg)
+--     else
+--         if page ~= 0 then
+--             uim.sendMessage("Main", ("\t"):rep(6) .. "[ PAGE " .. page .. " OF " .. totalPages .. " ]", mode, MESSAGE_DURATION, true)
+--         end
+--         -- Go in reverse order because sendMessage on CHATLIKE is a queue
+--         for i = #displayedCommands, 1, -1 do
+--             local command = displayedCommands[i]
+--             uim.sendMessage("Main", command:get_usage(command.description ~= nil), mode, MESSAGE_DURATION)
+--         end
+--         uim.sendMessage("Main", HEADER, mode, MESSAGE_DURATION, true)
+--     end
+
+-- end
+
+local lastHelpMessage = nil
+
+local function HandleList(page, logsOnly)
+    -- page == nil → showall
+
+    local ENTRIES_PER_PAGE = 5
+
     local commands = cm.MANAGER:commands()
     local sortedCommands = {table.unpack(commands)}
     table.sort(sortedCommands, function(a, b) return a.name < b.name end)
 
-    local MESSAGE_DURATION = 30.0
-    local ENTRIES_PER_PAGE = 5
-    local totalPages = math.ceil(#commands / ENTRIES_PER_PAGE)
-
-    -- GET FUNCTION  LIST
     local displayedCommands = {}
-    if page == nil or page < 0 or page > totalPages then
+    local totalPages = math.ceil(#commands / ENTRIES_PER_PAGE)
+    if page == nil then
+        for i, command in ipairs(sortedCommands) do
+            table.insert(displayedCommands, command)
+        end
+    elseif page < 0 or page > totalPages then
         uim.sendMessage("Main", "Invalid page number. Give a page between 1 and " .. tostring(totalPages) .. ".", mode, 8.0, true)  -- Allow page 0 as 'see all'
     else
         for i, command in ipairs(sortedCommands) do
@@ -72,30 +132,29 @@ local function HandleList(mode, page, ue4ssprint)
         end
     end
 
-    -- DISPLAY
-    local HEADER = "Commands from PDCmdMod by Perru (@perru_ on discord):\n  Help syntax: <mandatory> [optional]. Ellipsis means multiple/unknown subcommands/arguments.\n "
-    if ue4ssprint then
-        local msg = HEADER
-        for i = 1, #displayedCommands do
-            local command = displayedCommands[i]
-            msg = msg .. "  " .. command:get_usage(command.description ~= nil) .. "\n"
-        end
-        if page ~= 0 then
-            msg = ("\t"):rep(6) .. "[ PAGE " .. page .. " OF " .. totalPages .. " ]\n" .. msg
-        end
-        print("[PDCmdMod] [Main] " .. msg)
-    else
-        if page ~= 0 then
-            uim.sendMessage("Main", ("\t"):rep(6) .. "[ PAGE " .. page .. " OF " .. totalPages .. " ]", mode, MESSAGE_DURATION, true)
-        end
-        -- Go in reverse order because sendMessage on CHATLIKE is a queue
-        for i = #displayedCommands, 1, -1 do
-            local command = displayedCommands[i]
-            uim.sendMessage("Main", command:get_usage(command.description ~= nil), mode, MESSAGE_DURATION)
-        end
-        uim.sendMessage("Main", HEADER, mode, MESSAGE_DURATION, true)
+    local message = "Commands from PDCmdMod by Perru (@perru_ on discord):<snl>" ..
+                    "Help syntax: <mandatory> [optional]. Ellipsis means multiple/unknown subcommands/arguments<snl>" ..
+                    " <snl>"
+    
+    for i, command in ipairs(displayedCommands) do
+        message = message .. command:get_usage(command.description ~= nil) .. "<snl>"
     end
 
+    if page ~= nil then -- nil → shortlist
+        message = message .. " <snl>" .. ("\t"):rep(6) .. "[ PAGE " .. page .. " OF " .. totalPages .. " ]"
+    end
+
+    if logsOnly then
+        message = message:gsub("<snl>", "\n")
+        msg:logInfo(message)
+    else
+        if lastHelpMessage ~= nil and not lastHelpMessage:isExpired() then
+            lastHelpMessage:setText(message)
+            lastHelpMessage:setDuration(uim.readTime(message, uim.TIME.HELP))
+        else
+            lastHelpMessage = msg:feedback(message, uim.readTime(message, uim.TIME.HELP), "<snl>")
+        end
+    end
 end
 
 local function HandleCredits(mode)
@@ -144,17 +203,11 @@ cmd_help:branch(
         flags_syntax = "--showall, --ue4ssprint"
     },
     function(args, flags)
-        for idx, flag in ipairs(flags) do
-            print(tostring(idx), tostring(flag))
-        end
         local page = tonumber(args[1]) or 1
-        if page == 0 then
-            page = -1  -- Page 0 code only for flag. Set to -1 so HandleList's warning is used for the sake of consistency.
-        end
         if flags and flags["showall"] then
-            page = 0
+            page = nil
         end
-        HandleList(uim.MessageTypes.CHATLIKE, page, flags and flags["ue4ssprint"])
+        HandleList(page, flags and flags["ue4ssprint"])
         return true
     end
 )
@@ -164,7 +217,8 @@ cmd_help:branch(
     {
         description = "Do you need help with the help command? Do not worry. It's gonna be fine.",
         args_syntax = "<command> [subcommands and arguments...]",
-        flags_syntax = nil
+        flags_syntax = nil,
+        aliases = "pdh"
     },
     function(args, flags)
 
@@ -212,6 +266,26 @@ cmd_help:branch(
     function(args, flags)
         HandleCredits(uim.MessageTypes.CHATLIKE)
         return true
+    end
+)
+
+-- Expire all live feedback toasts. Aliases: 'pdcmdmod clear', 'clear', 'cls', 'clr'.
+local function HandleClear()
+    local n = uim.clearActive()
+    print("[Main] Cleared " .. tostring(n) .. " active message(s)")
+    return true
+end
+
+cmd_help:branch(
+    "clear",
+    {
+        description = "Clear all active on-screen feedback messages.",
+        args_syntax = nil,
+        flags_syntax = nil,
+        aliases = { "clear", "cls", "clr" }
+    },
+    function(args, flags)
+        return HandleClear()
     end
 )
 

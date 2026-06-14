@@ -11,6 +11,8 @@ local uim = require("uimanager")
 local cm = require("commandmanager")
 local ds = require("datastorage")
 
+local msg = uim.newMessenger("DLCGarage")
+
 local SAVE_KEY = "dlcgarage_mode"
 
 local function IsInGarage()
@@ -33,23 +35,25 @@ end
 
 local function ApplyAesthetic()
     if not IsInGarage() then
-        uim.sendMessage("DLCGarage", "Not in garage - cannot apply DLC aesthetic here", uim.MessageTypes.ERR)
+        msg:alert("Not in garage", "You must be in the garage to apply the DLC asthetic.")
         return false
     end
 
     local mgr = GetManager()
     if not mgr then
-        uim.sendMessage("DLCGarage", "BP_FIG_GarageMischiefManager_C not found", uim.MessageTypes.ERR)
+        msg:alert("Failed", "Failed to find manager. Cannot apply asthetic.")
+        msg:logErr("BP_FIG_GarageMischiefManager_C not found")
         return false
     end
 
     local ok, err = pcall(function() mgr:ApplyIntroAdjustments() end)
     if not ok then
-        uim.sendMessage("DLCGarage", "ApplyIntroAdjustments failed: " .. tostring(err), uim.MessageTypes.ERR)
+        msg:alert("Failed", "Failed to apply DLC aesthetic")
+        msg:logErr("ApplyIntroAdjustments failed: " .. tostring(err))
         return false
     end
 
-    uim.sendMessage("DLCGarage", "DLC garage aesthetic applied", uim.MessageTypes.CHATLIKE)
+    msg:feedback("DLC garage aesthetic applied")
     return true
 end
 
@@ -61,7 +65,7 @@ RegisterHook("/Script/Engine.PlayerController:ClientRestart", function()
         local mgr = GetManager()
         if not mgr then return end
         pcall(function() mgr:ApplyIntroAdjustments() end)
-        uim.sendMessage("DLCGarage", "DLC garage aesthetic auto-applied", uim.MessageTypes.LOGS)
+        msg:logInfo("DLC garage aesthetic auto-applied")
     end)
 end)
 
@@ -70,6 +74,7 @@ local cmd = cm.MANAGER:register(
     "dlcgarage",
     {
         description = "Toggle the DLC garage aesthetic permanently.",
+        detailed_description = "Apply the Whispers in the Woods DLC garage asthetic either once or automatically on every garage load if enabled.",
         args_syntax = nil,
         flags_syntax = nil
     },
@@ -79,14 +84,14 @@ local cmd = cm.MANAGER:register(
 cmd:branch(
     "enable",
     {
-        description = "Enable the DLC garage aesthetic and auto-apply on every garage load.",
+        description = "Enable the DLC garage aesthetic and automtically apply on every garage load.",
         args_syntax = nil,
         flags_syntax = nil
     },
     function(args, flags)
         ds.set(SAVE_KEY, true)
         ApplyAesthetic()
-        uim.sendMessage("DLCGarage", "DLC garage aesthetic enabled and will persist on reload", uim.MessageTypes.CHATLIKE)
+        msg:feedback("DLC garage aesthetic enabled and will persist on reload")
         return true
     end
 )
@@ -94,13 +99,15 @@ cmd:branch(
 cmd:branch(
     "disable",
     {
-        description = "Disable the DLC garage aesthetic and stop auto-applying.",
+        description = "Stop automatically applying the DLC asthetic.",
+        detailed_description = "The garage must be reloaded in order to remove WitW asthetic. It will not disable it if the game applies it by itself.\n" ..
+                               "If the game applies it by itself, this is because you scanned the mysterious effigy and did not complete the initiation mission yet.",
         args_syntax = nil,
         flags_syntax = nil
     },
     function(args, flags)
         ds.set(SAVE_KEY, false)
-        uim.sendMessage("DLCGarage", "DLC garage aesthetic disabled", uim.MessageTypes.CHATLIKE)
+        msg:feedback("DLC garage aesthetic disabled")
         return true
     end
 )
@@ -108,7 +115,8 @@ cmd:branch(
 cmd:branch(
     "apply",
     {
-        description = "Manually apply the DLC garage aesthetic without changing saved state.",
+        description = "Manually apply the DLC garage aesthetic.",
+        detailed_description = "Manually apply the DLC garage aesthetic without saving state. This will not persist on reload.",
         args_syntax = nil,
         flags_syntax = nil
     },
@@ -125,6 +133,6 @@ if ds.get(SAVE_KEY, false) then
         local mgr = GetManager()
         if not mgr then return end
         pcall(function() mgr:ApplyIntroAdjustments() end)
-        uim.sendMessage("DLCGarage", "DLC garage aesthetic auto-applied on startup", uim.MessageTypes.LOGS)
+        msg:logInfo("DLC garage aesthetic auto-applied on startup")
     end)
 end

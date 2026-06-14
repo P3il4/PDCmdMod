@@ -6,6 +6,8 @@
 local uim = require("uimanager")
 local cm = require("commandmanager")
 
+local msg = uim.newMessenger("Bookmark")
+
 local GAME_BMK = "../../../PenDriverPro/Content/Bookmarks/BookMark.bmk"
 local BMK_DIR = "../../../PenDriverPro/Content/Bookmarks/"
 local RESERVED = "bookmark"
@@ -60,10 +62,14 @@ end
 
 local cmd_bmk = cm.MANAGER:register(
     "bookmark",
-    { 
-        description = "Make and load bookmarks (alternate savestates).",
+    {
+        description = "Make and load bookmarks.",
+        detailed_description = "Bookmarks are alternate, non compressed and named save states.\n" ..
+                               "Loading or making a bookmark will stop auto-saving (of any sort, including exiting junctions) until you manually save your game.\n" ..
+                               "Not recommended for purposes other than data mining.",
         args_syntax = nil,
-        flags_syntax = nil
+        flags_syntax = nil,
+        aliases = { "bmk" }
     },
     nil
 )
@@ -73,23 +79,26 @@ cmd_bmk:branch(
     "make",
     {
         description = "Create a named bookmark of the current game state.",
-        args_syntax = "<name>"
+        detailed_description = "Makes a named bookmark of the current game state. Bookmarks are stored in PenDriverPro/Content/Bookmarks/.\n" ..
+                               "Loading or making a bookmark will stop auto-saving (of any sort, including exiting junctions) until you manually save your game.",
+        args_syntax = "<name>",
+        aliases = { "bmkm", "bmks" }
     },
     function(args, flags)
         local name = args[1]
         if not name then
-            uim.sendMessage("BMK", "Usage: debug bmk make <name>", uim.MessageTypes.ALERT)
+            msg:alert("Bookmark not found", "Usage: debug bmk make <name>")
             return true
         end
         local is_valid, err = ValidateName(name)
         if not is_valid then
-            uim.sendMessage("BMK", "Invalid name: " .. err, uim.MessageTypes.ALERT)
+            msg:alert("Invalid name", "This name is not allowed: " .. err)
             return true
         end
 
         local sgm = GetSGM()
         if not sgm then
-            uim.sendMessage("BMK", "SaveGameManager not found", uim.MessageTypes.ERR)
+            msg:logErr("SaveGameManager not found")
             return true
         end
 
@@ -98,18 +107,18 @@ cmd_bmk:branch(
             sgm["DbgActEvt_MakeBookmark \"bookmark\"_Execute"](sgm)
         end)
         if not ok then
-            uim.sendMessage("BMK", "MakeBookmark failed: " .. tostring(err), uim.MessageTypes.ERR)
+            msg:alert("Cannot create bookmark", "MakeBookmark failed:\n" .. uim.wrapText(err), uim.TIME.PROBLEM, "\n")
             return true
         end
 
         -- Copy to named file
         local ok2, err2 = CopyFile(GAME_BMK, GetPath(name))
         if not ok2 then
-            uim.sendMessage("BMK", "Failed to save: " .. tostring(err2), uim.MessageTypes.ERR)
+            msg:alert("Cannot save bookmark", "Failed to save:\n" .. uim.wrapText(err2), uim.TIME.PROBLEM, "\n")
             return true
         end
 
-        uim.sendMessage("BMK", "Bookmark saved: " .. name, uim.MessageTypes.CHATLIKE)
+        msg:feedback("Bookmark saved as '" .. name .. "'")
         return true
     end
 )
@@ -119,23 +128,27 @@ cmd_bmk:branch(
     "load",
     {
         description = "Load a named bookmark.",
-        args_syntax = "<name>"
+        detailed_description = "Loads a bookmark of the current game state. Bookmarks are stored in PenDriverPro/Content/Bookmarks/.\n" ..
+                               "Loading or making a bookmark will stop auto-saving (of any sort, including exiting junctions) until you manually save your game." ..
+                               "Note bookmarks are manually renamed to BookMark.bmk which the game searches for.",
+        args_syntax = "<name>",
+        aliases = { "bmkl" }
     },
     function(args, flags)
         local name = args[1]
         if not name then
-            uim.sendMessage("BMK", "Usage: debug bmk load <name>", uim.MessageTypes.ALERT)
+            msg:alert("Bookmark name not specified", "Usage: debug bmk load <name>")
             return true
         end
         if IsReserved(name) then
-            uim.sendMessage("BMK", "'" .. name .. "' is reserved.", uim.MessageTypes.ALERT)
+            msg:alert("Invalid name", "'" .. name .. "' is reserved by the game")
             return true
         end
 
         -- Check file exists
         local f = io.open(GetPath(name), "r")
         if not f then
-            uim.sendMessage("BMK", "Bookmark not found: " .. name, uim.MessageTypes.ALERT)
+            msg:alert("Bookmark not found", "Bookmark not found: " .. name)
             return true
         end
         f:close()
@@ -143,13 +156,13 @@ cmd_bmk:branch(
         -- Copy to BookMark.bmk
         local ok, err = CopyFile(GetPath(name), GAME_BMK)
         if not ok then
-            uim.sendMessage("BMK", "Failed to copy: " .. tostring(err), uim.MessageTypes.ERR)
+            msg:alert("Cannot copy bookmark", "Failed to copy:\n" .. uim.wrapText(err), uim.TIME.PROBLEM, "\n")
             return true
         end
 
         local sgm = GetSGM()
         if not sgm then
-            uim.sendMessage("BMK", "SaveGameManager not found", uim.MessageTypes.ERR)
+            msg:logErr("SaveGameManager not found")
             return true
         end
 
@@ -157,11 +170,11 @@ cmd_bmk:branch(
             sgm["DbgActEvt_LoadBookmark \"bookmark\"_Execute"](sgm)
         end)
         if not ok2 then
-            uim.sendMessage("BMK", "LoadBookmark failed: " .. tostring(err2), uim.MessageTypes.ERR)
+            msg:alert("Failed to load bookmark", "LoadBookmark failed:\n" .. uim.wrapText(err2), uim.TIME.PROBLEM, "\n")
             return true
         end
 
-        uim.sendMessage("BMK", "Loaded bookmark: " .. name, uim.MessageTypes.CHATLIKE)
+        msg:feedback("Loaded bookmark '" .. name .. "'")
         return true
     end
 )
@@ -182,7 +195,7 @@ cmd_bmk:branch(
         end)
 
         if not ok or not result or result == "" then
-            uim.sendMessage("BMK", "No bookmarks found", uim.MessageTypes.CHATLIKE)
+            msg:feedback("You have no bookmarks.")
             return true
         end
 
@@ -193,11 +206,14 @@ cmd_bmk:branch(
         end
 
         if #names == 0 then
-            uim.sendMessage("BMK", "No bookmarks found", uim.MessageTypes.CHATLIKE)
+            msg:feedback("You have no bookmarks.")
             return true
         end
-
-        uim.sendMessage("BMK", "Bookmarks:\n  " .. table.concat(names, "\n  "), uim.MessageTypes.CHATLIKE, 20.0, true)
+        if #names < 15 then
+            msg:feedback("You have " .. #names .. " bookmarks:\n  " .. table.concat(names, "\n  "), uim.TIME.PROBLEM, "\n")
+        else
+            msg:feedback(uim.wrapText("You have " .. #names .. " bookmarks: " .. table.concat(names, ", ")))
+        end
         return true
     end
 )
@@ -207,24 +223,25 @@ cmd_bmk:branch(
     "delete",
     {
         description = "Delete a named bookmark.",
+        detailed_description = "Deletion is permanant and there is no confirmation prompt. Use with caution!",
         args_syntax = "<name>"
     },
     function(args, flags)
         local name = args[1]
         if not name then
-            uim.sendMessage("BMK", "Usage: debug bmk delete <name>", uim.MessageTypes.ALERT)
+            msg:alert("Bookmark name not specified", "Usage: debug bmk delete <name>")
             return true
         end
         local is_valid, err = ValidateName(name)
         if not is_valid then
-            uim.sendMessage("BMK", "Invalid name: " .. err, uim.MessageTypes.ALERT)
+            msg:alert("Invalid name", err)
             return true
         end
 
         local path = GetPath(name)
         local f = io.open(path, "r")
         if not f then
-            uim.sendMessage("BMK", "Bookmark not found: " .. name, uim.MessageTypes.ALERT)
+            msg:alert("Bookmark not found", uim.wrapText("Bookmark not found: " .. name))
             return true
         end
         f:close()
@@ -233,11 +250,11 @@ cmd_bmk:branch(
             os.remove(path)
         end)
         if not ok then
-            uim.sendMessage("BMK", "Delete failed: " .. tostring(err), uim.MessageTypes.ERR)
+            msg:alert("Cannot delete bookmark", "Delete failed:\n" .. uim.wrapText(err), uim.TIME.PROBLEM, "\n")
             return true
         end
 
-        uim.sendMessage("BMK", "Deleted bookmark: " .. name, uim.MessageTypes.CHATLIKE)
+        msg:feedback("Deleted bookmark '" .. name .. "'")
         return true
     end
 )

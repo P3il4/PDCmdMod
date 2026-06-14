@@ -5,6 +5,8 @@
 local CommandSystem = {}
 local uim = require("uimanager")
 
+local msg = uim.newMessenger("Command")
+
 
 -- ─────────────────────────────────────────────
 -- Argument Parser
@@ -21,8 +23,7 @@ local uim = require("uimanager")
 -- ─────────────────────────────────────────────
 
 local function SendUnknownError(cmd, err)
-    uim.sendMessage("Command", "Unknown command", uim.MessageTypes.ALERT)
-    uim.sendMessage("Command", "No command matches: " .. cmd, uim.MessageTypes.CHATLIKE)
+    msg:alert("Unknown command", "No command matches: " .. cmd)
     uim.sendMessage("Command", "Error: " .. tostring(err), uim.MessageTypes.LOGS)
 end
 
@@ -133,6 +134,25 @@ end
 -- Command Node
 -- ─────────────────────────────────────────────
 
+-- Register every alias of a node as a top-level console command that
+-- jumps straight to that node. Works for top-level commands AND branches:
+-- the alias is placed in the manager's root children and pointed at the
+-- node, so dispatch resolves `alias <rest>` as `<node path> <rest>`.
+-- (e.g. alias "bmkm" on the bookmark>make branch makes "bmkm x" act like
+-- "bookmark make x".) Aliases never change a node's canonical path().
+local function register_node_aliases(manager, node)
+    local aliases = node.aliases
+    if not aliases or not manager then return end
+    if type(aliases) == "string" then aliases = { aliases } end
+    for _, alias in ipairs(aliases) do
+        manager._root.children[alias:lower()] = node
+        RegisterConsoleCommandHandler(alias, function(full_input)
+            local n = manager:dispatch(full_input)
+            return n ~= nil
+        end)
+    end
+end
+
 local Command = {}
 Command.__index = Command
 
@@ -141,8 +161,10 @@ local function new_node(name, opts, handler)
     return setmetatable({
         name         = name,
         description  = opts.description  or nil,  -- string: what this command does
+        detailed_description = opts.detailed_description or nil,  -- string: longer help text, shown only when viewing this exact node's help
         args_syntax  = opts.args_syntax  or nil,  -- string: e.g. '<display name> [amount]'
         flags_syntax = opts.flags_syntax or nil,  -- string: e.g. '--silent, --count=<n>'
+        aliases      = opts.aliases      or nil,  -- table|string: extra names that jump to this node
         handler      = handler,                   -- function(args, flags) or nil
         children     = {},                        -- name (lowercase) → Command node
         _parent      = nil,
@@ -150,13 +172,16 @@ local function new_node(name, opts, handler)
 end
 
 -- Register a child subcommand on this node.
--- opts is a table: { description, args_syntax, flags_syntax }  (all optional)
+-- opts is a table: { description, detailed_description, args_syntax, flags_syntax }  (all optional)
+-- detailed_description is longer help text shown only when this exact node's help is viewed.
 -- handler is a function(args, flags), or nil for intermediate branch nodes.
 function Command:branch(name, opts, handler)
     assert(type(name) == "string" and name ~= "", "branch name must be a non-empty string")
     local child  = new_node(name, opts, handler)
     child._parent = self
+    child._manager = self._manager
     self.children[name:lower()] = child
+    register_node_aliases(self._manager, child)
     return child
 end
 
@@ -208,13 +233,15 @@ function Manager.new()
 end
 
 -- Register a top-level command.
--- opts is a table: { description, args_syntax, flags_syntax }  (all optional)
+-- opts is a table: { description, detailed_description, args_syntax, flags_syntax }  (all optional)
+-- detailed_description is longer help text shown only when this exact node's help is viewed.
 -- handler is a function(args, flags), or nil for group nodes.
 function Manager:register(name, opts, handler)
     -- print("DEBUG REGISTER MANAGER:", self)
     assert(type(name) == "string" and name ~= "", "command name must be a non-empty string")
     local cmd     = new_node(name, opts, handler)
     cmd._parent   = self._root
+    cmd._manager  = self
     self._root.children[name:lower()] = cmd
 
     -- print("DEBUG REGISTERED:", name)
@@ -228,6 +255,8 @@ function Manager:register(name, opts, handler)
         local node, args, flags = CommandSystem.MANAGER:dispatch(full_input)
         return node ~= nil  -- return true if command was handled, false for "unknown command"
     end)
+
+    register_node_aliases(self, cmd)
 
     return cmd
 end
@@ -303,11 +332,17 @@ function Manager:dispatch(input)
     return node, args, flags
 end
 
--- Returns an array of all top-level command nodes (for building help UIs etc.)
+-- Returns an array of all top-level command nodes (for building help UIs etc.).
+-- Aliases live in _root.children too (pointing at their target node), so skip
+-- any entry that isn't a node's own canonical top-level registration: an alias
+-- entry's key never matches its node's name, and branch aliases point at a node
+-- whose parent isn't the root. This keeps aliases out of every list.
 function Manager:commands()
     local list = {}
-    for _, cmd in pairs(self._root.children) do
-        table.insert(list, cmd)
+    for key, cmd in pairs(self._root.children) do
+        if cmd._parent == self._root and cmd.name:lower() == key then
+            table.insert(list, cmd)
+        end
     end
     table.sort(list, function(a, b) return a.name < b.name end)
     return list
@@ -339,16 +374,39 @@ function Command:get_usage(includeDescription)
 end
 
 
+function ChildNameAndAliases(child)
+    if not child.aliases then
+        return child.name
+    end
+    
+    aliases = type(child.aliases) == "string" and { child.aliases } or child.aliases
+    return child.name .. " (" .. table.concat(aliases, ", ") .. ")"
+end
+
+
 function Command:show_help()
 
-    msg_stack = {}
-
     local hasSubcommands = next(self.children) ~= nil
+    local hasAliases = self.aliases ~= nil
 
-    table.insert(msg_stack, tostring(self:get_usage(self.description ~= nil)))
+    local message = tostring(self:get_usage(self.description ~= nil))
+
+    -- Detailed description only ever shows for the node whose help is being
+    -- viewed directly — never for the subcommands listed below it.
+    if self.detailed_description then
+        message = message .. "<snl>Full description:"
+        for line in uim.wrapText(self.detailed_description):gmatch("[^\r\n]+") do
+            message = message .. "<snl>  " .. line
+        end
+    end
+
+    if hasAliases then
+        local aliases = type(self.aliases) == "string" and { self.aliases } or self.aliases
+        message = message .. "<snl>" .. uim.wrapText("Aliases: " .. table.concat(aliases, ", "))
+    end
 
     if hasSubcommands then
-        table.insert(msg_stack, "Subcommands:")
+        message = message .. "<snl>Subcommands:"
 
         local children = {}
         for _, child in pairs(self.children) do
@@ -359,19 +417,24 @@ function Command:show_help()
             return a.name < b.name
         end)
 
+        local longest = 0
         for _, child in ipairs(children) do
-            table.insert(msg_stack, ("  %-16s %s")
+            longest = math.max(longest, #ChildNameAndAliases(child))
+        end
+
+        for _, child in ipairs(children) do
+            local spaces = math.max(16, longest + 4)
+            message = message .. "<snl>" .. (("  %-" .. spaces .. "s %s")
                 :format(
-                    child.name,
+                    ChildNameAndAliases(child),
                     child.description or ""
-                ))
+                )
+            )
         end
     end
 
     -- uim.sendMessage in reverse over the message stack so the top message appears first in the chat window
-    for i = #msg_stack, 1, -1 do
-        uim.sendMessage("Help", msg_stack[i], uim.MessageTypes.CHATLIKE, 30.0, false)
-    end
+    msg:feedback(message, uim.TIME.HELP, "<snl>")
 end
 
 
@@ -398,11 +461,15 @@ CommandSystem.Manager    = Manager    -- for multiple-manager setups
 CommandSystem.parse_args = parse_args -- exposed for testing
 
 local cmd_debug = CommandSystem.MANAGER:register(
-    "dbg",
+    "debug",
     {
-        description = "Debug commands from the PDCmdMod used for development. They are likely to crash your game and do not contain exclusive functionality.",
+        description = "Debug commands from the PDCmdMod used for development.",
+        detailed_description = "These commands are not intended for you to use and may change or be removed at any time.\n" ..
+                               "They may crash the game, corrupt your save or cause other issues.\n" ..
+                               "Debug functions do not have any exclusive features. Any functionality they may offer are accessible via safer commands.",
         args_syntax = "<command> [subcommands and arguments...]",
-        flags_syntax = nil
+        flags_syntax = nil,
+        aliases = { "dbg" }
     },
     nil
 )

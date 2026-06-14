@@ -26,31 +26,37 @@ Once done installing UE4SS, you can install this mod by going in the [releases t
 
 ```
 Commands from PDCmdMod by Perru (@perru_ on discord):
-  Help syntax: <mandatory> [optional]. Ellipsis means multiple/unknown subcommands/arguments.
-
+  Help syntax: <mandatory> [optional]. Ellipsis means multiple/unknown subcommands/arguments
+ 
 BOOKMARK ...
-  Make and load bookmarks (alternate savestates).
+  Make and load bookmarks.
 
 BORDERS ...
-  Command to toggle invisible and instability walls. You will still be teleported back if you reach the void.
+  Command to toggle invisible and instability walls.
 
-DBG <COMMAND> [SUBCOMMANDS AND ARGUMENTS...]
-  Debug commands from the PDCmdMod used for development. They are likely to crash your game and do not contain exclusive functionality.
+DEBUG <COMMAND> [SUBCOMMANDS AND ARGUMENTS...]
+  Debug commands from the PDCmdMod used for development.
 
 DELETEHAND
-  Deletes item in hand. Only works on droppable items.
+  Deletes item in hand.
 
 DLCGARAGE ...
   Toggle the DLC garage aesthetic permanently.
 
 EVENT ...
-  Manually trigger events
+  DEPRECATED. Manually trigger events. This command is unstable and can cause issues
 
 EXPEDITION ...
   Expeditions related command(s).
 
+FATIGUE ...
+  Commands to manipulate the held part's fatigue.
+
 GIVE ...
-  Give items to player. DO NOT GIVE YOURSELF ITEMS FROM DLCs YOU DO NOT OWN OR IT WILL BRICK YOUR SAVE UPON RELOADING.
+  Give items to player. GIVING YOURSELF DLC ITEMS WILL BRICK YOUR SAVE.
+
+LOAD
+  Open the load game menu (does not pause the game)
 
 PDCMDMOD ...
   Show this message
@@ -58,8 +64,14 @@ PDCMDMOD ...
 PHOTO ...
   Go past the photomode border and edit camera speed.
 
+SAVE
+  Open the save game menu (does not pause the game)
+
 SPAWN <ASSET_PATH>
   Spawn an actor at the player's location.
+
+TP <CAR|PLAYER|CAM> [X Y Z]  FLAGS: --RELATIVE-TO=<SELF|CAR|PLAYER|CAM>
+  Teleport the player, car or camera.
 
 UNLOCKLOGS ...
   Unlock logbook entries.

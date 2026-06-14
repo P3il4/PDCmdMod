@@ -5,7 +5,8 @@ local cm = require("commandmanager")
 local cmd = cm.MANAGER:register(
     "deletehand",
     {
-        description = "Deletes item in hand. Only works on droppable items.",
+        description = "Deletes item in hand.",
+        detailed_description = "This command only works on droppable items.",
         args_syntax = nil,
         flags_syntax = nil
     },

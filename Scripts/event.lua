@@ -121,7 +121,8 @@ end
 local cmd = cm.MANAGER:register(
     "event",
     {
-        description = "Manually trigger events",
+        description = "DEPRECATED. Manually trigger events. This command is unstable and can cause issues",
+        detailed_description = "We recommend you use 'widget open UMG_StatusEffectTools' (misleading name) instead.",
         args_syntax = nil,
         flags_syntax = nil
     },

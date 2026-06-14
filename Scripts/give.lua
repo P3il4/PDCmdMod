@@ -447,7 +447,9 @@ end
 local cmd = cm.MANAGER:register(
     "give",
     {
-        description = "Give items to player. DO NOT GIVE YOURSELF ITEMS FROM DLCs YOU DO NOT OWN OR IT WILL BRICK YOUR SAVE UPON RELOADING.",
+        description = "Give items to player. GIVING YOURSELF DLC ITEMS WILL BRICK YOUR SAVE.",
+        detailed_description = "Gives item to player depending on display name or ids.\n" ..
+                               "Warning: you will not be able to load back into your save if you try to give yourself DLC items.",
         args_syntax = nil,
         flags_syntax = nil
     },

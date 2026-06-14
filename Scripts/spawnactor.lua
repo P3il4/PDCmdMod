@@ -116,7 +116,7 @@ local cmd = cm.MANAGER:register(
         if ok and actor then
             uim.sendMessage("Spawn", "Spawned '" .. raw .. "'", uim.MessageTypes.CHATLIKE)
         else
-            uim.sendMessage("Spawn", "Spawn failed: " .. tostring(actor), uim.MessageTypes.LOG)
+            uim.sendMessage("Spawn", "Spawn failed: " .. tostring(actor), uim.MessageTypes.LOGS)
             uim.sendMessage("Spawn", "Spawn failed", uim.MessageTypes.ALERT)
             uim.sendMessage("Spawn", "Failed to spawn '" .. raw .. "'", uim.MessageTypes.CHATLIKE)
         end

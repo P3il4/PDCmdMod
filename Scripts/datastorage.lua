@@ -79,6 +79,7 @@ local cmd = cm.cmd_debug:branch(
     "resetdata",
     {
         description = "Reset saved data",
+        detailed_description = "Resets the saved data to the default state (settings contained in Scripts/Data/savedata_default.lua).",
         args_syntax = nil,
         flags_syntax = nil
     },

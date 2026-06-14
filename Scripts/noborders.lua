@@ -51,7 +51,9 @@ end
 local cmd_borders = cm.MANAGER:register(
     "borders",
     {
-        description = "Command to toggle invisible and instability walls. You will still be teleported back if you reach the void.",
+        description = "Command to toggle invisible and instability walls.",
+        detailed_description = "This command allows you to toggle invisible walls and instability walls on or off.\n" ..
+                               "You will still be teleported back if you fall off the map.",
         args_syntax = nil,
         flags_syntax = nil
     },
@@ -132,68 +134,3 @@ local cmd_borders_disable = cmd_borders:branch(
         return true
      end
 )
-
-
-
-
--- OLD COMMAND 
-
-RegisterConsoleCommandHandler("toggleborders", function(FullCommand, Parameters)
-    
-    -- INVISIBLE WALLS
-
-    areBordersEnabled = not areBordersEnabled
-
-    local blockers = FindAllOf("BP_InvisibleBlocker_C")
-    if blockers then
-        for _, b in ipairs(blockers) do
-            pcall(function() b:SetActorEnableCollision(areBordersEnabled) end)
-        end
-    end
-    uim.sendMessage("NoBorders", "Disabled BP_InvisibleBlocker_C collisions", uim.MessageTypes.LOGS)
-
-    -- INSTABILITY WALLS
-
-    local oobs = FindAllOf("BP_OutOfBounds_Base_C")
-
-    if oobs then
-        for _, oob in ipairs(oobs) do
-            if oob then
-                print("Disabling:", oob:GetFullName())
-
-                oob:SetActorTickEnabled(areBordersEnabled)
-            end
-        end
-    end
-        
-    if areBordersEnabled then
-        uim.sendMessage("NoBorders", "Invisible and instability walls are now enabled.", uim.MessageTypes.CHATLIKE)
-    else
-        uim.sendMessage("NoBorders", "Invisible and instability walls are now disabled.", uim.MessageTypes.CHATLIKE)
-    end
-    
-    --[[if oobs and #oobs > 0 then
-        local oob = oobs[1]
-        oob:SetActorEnableCollision(false)
-        local path = oob:GetFullName():match("^%S+%s+(.+)$")
-        
-        -- Try setting whiteboard timer values
-        local pm = FindFirstOf("BP_ProgressionManager_C")
-        if pm then
-            
-            local oob = oobs[1]
-        local path = oob:GetFullName():match("^%S+%s+(.+)$")
-
-        for _, offset in ipairs({0x1230, 0x1234, 0x1620, 0x1624}) do
-            PDWriteFloat(path, offset, 999999.0)
-        end
-        print("[OOB] Wrote timer overrides")
-        end
-        
-        -- Also try calling ResetTimers
-        local ok, err = pcall(function() oob:ResetTimers() end)
-        print("[OOB] ResetTimers ok=" .. tostring(ok))
-    end]]
-
-    return true
-end)
