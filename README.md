@@ -67,6 +67,9 @@ PHOTO ...
 SAVE
   Open the save game menu (does not pause the game)
 
+SCANNER ...
+  Read and modify the Zone Scanner's reveal charges.
+
 SPAWN <ASSET_PATH>
   Spawn an actor at the player's location.
 

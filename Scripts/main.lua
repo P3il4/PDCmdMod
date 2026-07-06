@@ -21,6 +21,7 @@ require("expeditions")
 require("loadbutton")
 require("tp")
 require("fatigue")
+require("scanner")
 
 
 local function HandleIntroduction(mode)
