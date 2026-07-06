@@ -24,7 +24,7 @@ local msg = uim.newMessenger("Command")
 
 local function SendUnknownError(cmd, err)
     msg:alert("Unknown command", "No command matches: " .. cmd)
-    uim.sendMessage("Command", "Error: " .. tostring(err), uim.MessageTypes.LOGS)
+    msg:logInfo("Error: " .. tostring(err))
 end
 
 

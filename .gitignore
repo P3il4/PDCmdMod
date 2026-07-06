@@ -1,3 +1,7 @@
 CLAUDE.md
 KNOWLEDGEBASE.md
 .claude/
+IGNORE_*
+IGNORE_*/
+IGNORE_*/*
+dtr_view.py
