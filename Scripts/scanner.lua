@@ -1,4 +1,3 @@
-
 -- ============================================================
 -- scanner: Read and modify the Zone Scanner's reveal charges.
 --
@@ -22,12 +21,12 @@
 local uim = require("uimanager")
 local cm = require("commandmanager")
 
-local SRC = "Scanner"
+local msg = uim.newMessenger("Scanner")
 
 local function GetProgressionManager()
     local pm = FindFirstOf("BP_ProgressionManager_C")
     if not pm or not pm:IsValid() then
-        uim.sendMessage(SRC, "Progression Manager not found. Is a save loaded?", uim.MessageTypes.ERR)
+        msg:logErr("Progression Manager not found. Is a save loaded?")
         return nil
     end
     return pm
@@ -50,11 +49,10 @@ end
 local function ShowReadout(v)
     local leftText  = (type(v.left) == "number")  and tostring(v.left)  or "?"
     local totalText = (type(v.total) == "number") and tostring(v.total) or "?"
-    uim.sendMessage(SRC, string.format(
+    msg:feedback(string.format(
         "Scanner charges: %s / %s%s",
         leftText, totalText,
-        (v.canReveal == false) and " (cannot reveal right now)" or ""),
-        uim.MessageTypes.CHATLIKE, 10.0, true)
+        (v.canReveal == false) and " (cannot reveal right now)" or ""))
 end
 
 -- ============================================================
@@ -66,7 +64,7 @@ local function HandleGet()
     if not pm then return true end
     local v = ReadChargesQuiet(pm)
     if not v then
-        uim.sendMessage(SRC, "GetRevealCharges failed.", uim.MessageTypes.ERR)
+        msg:logErr("GetRevealCharges failed.")
         return true
     end
     ShowReadout(v)
@@ -78,7 +76,7 @@ local function HandleRecharge()
     if not pm then return true end
     local ok, err = pcall(function() pm:RechargeReveals() end)
     if not ok then
-        uim.sendMessage(SRC, "RechargeReveals failed: " .. tostring(err), uim.MessageTypes.ERR)
+        msg:logErr("RechargeReveals failed: " .. tostring(err))
         return true
     end
     local v = ReadChargesQuiet(pm)
@@ -89,14 +87,14 @@ end
 local function HandleSetMax(args)
     local n = tonumber(args[1])
     if not n or n < 0 then
-        uim.sendMessage(SRC, "Usage: scanner setmax <n> (n >= 0)", uim.MessageTypes.ALERT)
+        msg:alert("Usage: scanner setmax <n> (n >= 0)")
         return true
     end
     local pm = GetProgressionManager()
     if not pm then return true end
     local ok, err = pcall(function() pm:SetMaxRevealCharges(math.floor(n)) end)
     if not ok then
-        uim.sendMessage(SRC, "SetMaxRevealCharges failed: " .. tostring(err), uim.MessageTypes.ERR)
+        msg:logErr("SetMaxRevealCharges failed: " .. tostring(err))
         return true
     end
     local v = ReadChargesQuiet(pm)
@@ -120,7 +118,7 @@ end
 local function HandleSet(args)
     local n = tonumber(args[1])
     if not n then
-        uim.sendMessage(SRC, "Usage: scanner set <n>", uim.MessageTypes.ALERT)
+        msg:alert("Usage: scanner set <n>")
         return true
     end
     local pm = GetProgressionManager()
@@ -128,8 +126,8 @@ local function HandleSet(args)
 
     local ok, err = SetChargesLeft(pm, math.floor(n))
     if not ok then
-        uim.sendMessage(SRC, "Failed to set charges: " .. tostring(err) ..
-            "\n(Is a region chart active? Charges are stored per chart.)", uim.MessageTypes.ERR)
+        msg:logErr("Failed to set charges: " .. tostring(err) ..
+            "\n(Is a region chart active? Charges are stored per chart.)")
         return true
     end
     local v = ReadChargesQuiet(pm)
@@ -140,7 +138,7 @@ end
 local function HandleAdd(args)
     local delta = tonumber(args[1])
     if not delta then
-        uim.sendMessage(SRC, "Usage: scanner add <n> (negative to subtract)", uim.MessageTypes.ALERT)
+        msg:alert("Usage: scanner add <n> (negative to subtract)")
         return true
     end
     local pm = GetProgressionManager()
@@ -148,14 +146,14 @@ local function HandleAdd(args)
 
     local cur = ReadChargesQuiet(pm)
     if not cur or type(cur.left) ~= "number" then
-        uim.sendMessage(SRC, "Could not read current charges.", uim.MessageTypes.ERR)
+        msg:logErr("Could not read current charges.")
         return true
     end
 
     local ok, err = SetChargesLeft(pm, math.floor(cur.left + delta))
     if not ok then
-        uim.sendMessage(SRC, "Failed to add charges: " .. tostring(err) ..
-            "\n(Is a region chart active? Charges are stored per chart.)", uim.MessageTypes.ERR)
+        msg:logErr("Failed to add charges: " .. tostring(err) ..
+            "\n(Is a region chart active? Charges are stored per chart.)")
         return true
     end
     local v = ReadChargesQuiet(pm)
