@@ -14,6 +14,8 @@
 local uim = require("uimanager")
 local cm = require("commandmanager")
 
+local msg = uim.newMessenger("Spawn")
+
 local function GetPlayerLocation()
     local player = FindFirstOf("Character")
     if not player then return {X=0, Y=0, Z=0} end
@@ -92,17 +94,17 @@ local cmd = cm.MANAGER:register(
 
         local raw = args[1]
         local classPath = ResolveSpawnPath(raw)
-        uim.sendMessage("Spawn", "Resolving: " .. classPath, uim.MessageTypes.LOGS)
+        msg:logInfo("Resolving: " .. classPath)
 
         local class = StaticFindObject(classPath)
         if not class then
-            uim.sendMessage("Spawn", "Class not found: " .. classPath, uim.MessageTypes.ERR)
+            msg:logErr("Class not found: " .. classPath)
             return true
         end
 
         local world = FindFirstOf("World")
         if not world then
-            uim.sendMessage("Spawn", "No world found", uim.MessageTypes.ERR)
+            msg:logErr("No world found")
             return true
         end
 
@@ -114,11 +116,11 @@ local cmd = cm.MANAGER:register(
         end)
 
         if ok and actor then
-            uim.sendMessage("Spawn", "Spawned '" .. raw .. "'", uim.MessageTypes.CHATLIKE)
+            msg:feedback("Spawned '" .. raw .. "'")
         else
-            uim.sendMessage("Spawn", "Spawn failed: " .. tostring(actor), uim.MessageTypes.LOGS)
-            uim.sendMessage("Spawn", "Spawn failed", uim.MessageTypes.ALERT)
-            uim.sendMessage("Spawn", "Failed to spawn '" .. raw .. "'", uim.MessageTypes.CHATLIKE)
+            msg:logInfo("Spawn failed: " .. tostring(actor))
+            msg:alert("Spawn failed")
+            msg:feedback("Failed to spawn '" .. raw .. "'")
         end
 
         return true

@@ -1,6 +1,8 @@
 local uim = require("uimanager")
 local cm = require("commandmanager")
 
+local msg = uim.newMessenger("Give")
+
 
 RegisterConsoleCommandHandler("pdtest", function(FullCommand, Parameters)
     local all = FindAllOf("ItemArchetype")
@@ -49,7 +51,7 @@ end
 local function FindInvManager()
     local im = FindFirstOf("BP_InventoryManager_C")
     if not im or not im:IsValid() then
-        uim.sendMessage("Give", "Inventory Manager not found. Is a save loaded?", uim.MessageTypes.ERR)
+        msg:logErr("Inventory Manager not found. Is a save loaded?")
         -- print("[Give] ERROR: BP_InventoryManager_C not found")
         return nil
     end
@@ -104,7 +106,7 @@ local function GiveArchetype(invManager, archetype, count)
         end)
         if not ok then
             problem = true
-            uim.sendMessage("Give", "Give failed on item " .. i .. ": " .. tostring(err), uim.MessageTypes.LOGS)
+            msg:logInfo("Give failed on item " .. i .. ": " .. tostring(err))
             -- (old print identical)
             break
         end
@@ -112,11 +114,11 @@ local function GiveArchetype(invManager, archetype, count)
     end
 
     if problem then
-        uim.sendMessage("Give", "Failed to give all items", uim.MessageTypes.ALERT)
-        uim.sendMessage("Give", "Received " .. given .. "/" .. count .. " item(s)", uim.MessageTypes.CHATLIKE)
+        msg:alert("Failed to give all items")
+        msg:feedback("Received " .. given .. "/" .. count .. " item(s)")
     else
         local displayName = TryGetDisplayName(archetype) or "unnamed item"
-        uim.sendMessage("Give", "Gave " .. given .. "x " .. displayName, uim.MessageTypes.CHATLIKE)
+        msg:feedback("Gave " .. given .. "x " .. displayName)
     end
     --print("[Give] Gave " .. given .. "/" .. count .. " item(s)")
 end
@@ -136,8 +138,8 @@ end
 -- ======================================================
 
 local function SendMessageBadName(name)
-    uim.sendMessage("Give", "Invalid item", uim.MessageTypes.ALERT)
-    uim.sendMessage("Give", "Could not find '" .. name .. "'. Use 'give tips' if this is unexpected.", uim.MessageTypes.CHATLIKE)
+    msg:alert("Invalid item")
+    msg:feedback("Could not find '" .. name .. "'. Use 'give tips' if this is unexpected.")
 end
 
 
@@ -150,23 +152,23 @@ local function HandleFullpath(input, count)
     fullPath = fullPath:gsub("%.uasset$", "")
     local assetName = fullPath:match("([^/]+)$")
     if not assetName then
-        uim.sendMessage("Give", "Failed to parse asset name from path: " .. input, uim.MessageTypes.LOGS)
+        msg:logInfo("Failed to parse asset name from path: " .. input)
         SendMessageBadName(input)
         --print("[Give] ERROR: Could not parse asset name from path: " .. input)
         return
     end
     fullPath = fullPath .. "." .. assetName
     
-    uim.sendMessage("Give", "Resolving: " .. fullPath, uim.MessageTypes.LOGS)
+    msg:logInfo("Resolving: " .. fullPath)
     --print("[Give] Resolving: " .. fullPath)
     local archetype = ResolveArchetype(fullPath)
     if not archetype then
-        uim.sendMessage("Give", "Asset not found: " .. fullPath, uim.MessageTypes.LOGS)
+        msg:logInfo("Asset not found: " .. fullPath)
         SendMessageBadName(input)
         --print("[Give] ERROR: Asset not found: " .. fullPath)
         return
     end
-    uim.sendMessage("Give", "Found archetype: " .. tostring(archetype), uim.MessageTypes.LOGS)
+    msg:logInfo("Found archetype: " .. tostring(archetype))
     -- print("[Give] Found archetype: " .. tostring(archetype))
     local im = FindInvManager()
     if not im then return end
@@ -182,28 +184,28 @@ local ITEMS_BASE_DLC_FIG = "/PDFeature_Fig/Gameplay/Inventory/Items/"
 local function HandlePath(input, count)
     local assetName = input:match("([^/]+)$")
     if not assetName then
-        uim.sendMessage("Give", "Could not parse asset name from path: " .. tostring(input), uim.MessageTypes.LOGS)
+        msg:logInfo("Could not parse asset name from path: " .. tostring(input))
         SendMessageBadName(input)
         return
     end
 
     -- Try base game path first, then DLC
     local fullPath = ITEMS_BASE .. input .. "." .. assetName
-    uim.sendMessage("Give", "Resolving: " .. fullPath, uim.MessageTypes.LOGS)
+    msg:logInfo("Resolving: " .. fullPath)
     local archetype = ResolveArchetype(fullPath)
 
     if not archetype then
         local dlcPath = ITEMS_BASE_DLC_FIG .. input .. "." .. assetName
-        uim.sendMessage("Give", "Not found, trying DLC path: " .. dlcPath, uim.MessageTypes.LOGS)
+        msg:logInfo("Not found, trying DLC path: " .. dlcPath)
         archetype = ResolveArchetype(dlcPath)
     end
 
     if not archetype then
-        uim.sendMessage("Give", "Asset not found: " .. input, uim.MessageTypes.LOGS)
+        msg:logInfo("Asset not found: " .. input)
         SendMessageBadName(input)
         return
     end
-    uim.sendMessage("Give", "Found archetype: " .. tostring(archetype), uim.MessageTypes.LOGS)
+    msg:logInfo("Found archetype: " .. tostring(archetype))
     local im = FindInvManager()
     if not im then return end
     GiveArchetype(im, archetype, count)
@@ -215,11 +217,11 @@ end
 local function HandleId(input, count)
     local all = FindAllOf("ItemArchetype")
     if not all then
-        uim.sendMessage("Give", "FindAllOf(\"ItemArchetype\") returned nil", uim.MessageTypes.ERR)
+        msg:logErr("FindAllOf(\"ItemArchetype\") returned nil")
         --print("[Give] No ItemArchetype objects found in memory")
         return
     end
-    uim.sendMessage("Give", "Scanning " .. #all .. " loaded ItemArchetype objects...", uim.MessageTypes.LOGS)
+    msg:logInfo("Scanning " .. #all .. " loaded ItemArchetype objects...")
     --print("[Give] Scanning " .. #all .. " loaded ItemArchetype objects...")
  
     -- Step 1: collect paths safely (GetPathName only, no property access)
@@ -239,7 +241,7 @@ local function HandleId(input, count)
     end
 
     if #paths == 0 then
-        uim.sendMessage("Give", "No loaded archetype matching id: " .. input, uim.MessageTypes.LOGS)
+        msg:logInfo("No loaded archetype matching id: " .. input)
         SendMessageBadName(input)
         --print("[Give] ERROR: No loaded ItemArchetype found with id: " .. input)
         --print("[Give] Tip: use 'give path <relative_path>' if the asset isn't loaded yet")
@@ -252,14 +254,14 @@ local function HandleId(input, count)
         pcall(function() fresh = StaticFindObject(cleanPath) end)
         if fresh then
             archetype = fresh
-            uim.sendMessage("Give", "Matched: " .. cleanPath, uim.MessageTypes.LOGS)
+            msg:logInfo("Matched: " .. cleanPath)
             --print("[Give] Matched: " .. cleanPath)
             break
         end
     end
  
     if not archetype then
-        uim.sendMessage("Give", "StaticFindObject failed for all matched paths", uim.MessageTypes.LOGS)
+        msg:logInfo("StaticFindObject failed for all matched paths")
         SendMessageBadName(input)
         --print("[Give] ERROR: Could not load archetype")
         return
@@ -299,15 +301,15 @@ local function HandleName(params, flags)
     local rawName = table.concat(params, " ", 1, endIdx)
     local normalizedInput = Normalize(rawName)
 
-    uim.sendMessage("Give", string.format("Searching for '%s' (index=%d, count=%d)", rawName, index, count), uim.MessageTypes.LOGS)
+    msg:logInfo(string.format("Searching for '%s' (index=%d, count=%d)", rawName, index, count))
 
     local all = FindAllOf("ItemArchetype")
     if not all then
-        uim.sendMessage("Give", "FindAllOf(\"ItemArchetype\") returned nil", uim.MessageTypes.ERR)
+        msg:logErr("FindAllOf(\"ItemArchetype\") returned nil")
         --print("[Give] No ItemArchetype objects found in memory")
         return
     end
-    uim.sendMessage("Give", "Scanning " .. #all .. " loaded ItemArchetype objects...", uim.MessageTypes.LOGS)
+    msg:logInfo("Scanning " .. #all .. " loaded ItemArchetype objects...")
     --print("[Give] Scanning " .. #all .. " loaded ItemArchetype objects...")
  
     -- Step 1: collect all paths safely, no property access
@@ -322,7 +324,7 @@ local function HandleName(params, flags)
             end
         end
     end
-    uim.sendMessage("Give", "Collected " .. #paths .. " valid paths", uim.MessageTypes.LOGS)
+    msg:logInfo("Collected " .. #paths .. " valid paths")
     -- print("[Give] Collected " .. #paths .. " valid paths")
  
     -- Step 2: load each fresh via StaticFindObject and access .Title safely
@@ -348,17 +350,11 @@ local function HandleName(params, flags)
     local chosen = matches[wrapped]
  
     if #matches > 1 then
-        uim.sendMessage("Give",
-            #matches .. " matches found, using #" .. wrapped,
-            uim.MessageTypes.CHATLIKE)
+        msg:feedback(#matches .. " matches found, using #" .. wrapped)
 
-        uim.sendMessage("Give",
-            "Chosen: '" .. tostring(chosen.displayName) .. "'",
-            uim.MessageTypes.LOGS)
+        msg:logInfo("Chosen: '" .. tostring(chosen.displayName) .. "'")
     else
-        uim.sendMessage("Give",
-            "Matched: '" .. tostring(chosen.displayName) .. "'",
-            uim.MessageTypes.LOGS)
+        msg:logInfo("Matched: '" .. tostring(chosen.displayName) .. "'")
     end
  
     local im = FindInvManager()
@@ -373,11 +369,11 @@ end
 -- ============================================================
 
 local function HandleTips()
-    uim.sendMessage("Give", "Use 'give help' for usage instructions.\n"
-                        ..  "Some modes may encouter issues with DLC items, try different modes if something doesn't work.\n"
-                        ..  "The 'give id' mode expects inputs such as IA_Resource_Raw_Lead, not display names like 'Lead Platelet'.\n"
-                        ..  "The 'give path' mode's root is 'Game/Gameplay/Inventory/Items/'.\n"
-        , uim.MessageTypes.CHATLIKE, 20.0, true
+    msg:feedback("Use 'give help' for usage instructions.\n"
+                ..  "Some modes may encouter issues with DLC items, try different modes if something doesn't work.\n"
+                ..  "The 'give id' mode expects inputs such as IA_Resource_Raw_Lead, not display names like 'Lead Platelet'.\n"
+                ..  "The 'give path' mode's root is 'Game/Gameplay/Inventory/Items/'.\n"
+        , 20.0, "\n"
     )
 end
 

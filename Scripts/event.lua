@@ -23,6 +23,8 @@
 local uim = require("uimanager")
 local cm = require("commandmanager")
 
+local msg = uim.newMessenger("Event")
+
 local function GetDirector()
     local all = FindAllOf("BP_GameplayEventDirector_C")
     if not all or #all == 0 then return nil end
@@ -140,15 +142,15 @@ local cmd_force = cmd:branch(
     function(args, flags)
         local ged = GetDirector()
         if not ged then
-            uim.sendMessage("Event", "No director. Must be in a junction", uim.MessageTypes.ERR)
+            msg:logErr("No director. Must be in a junction")
             return true
         end
         local ok, err = pcall(function() ged:ForceStartEvent() end)
         if ok then
-            uim.sendMessage("Event", "Forced random event", uim.MessageTypes.CHATLIKE)
+            msg:feedback("Forced random event")
         else
-            uim.sendMessage("Event", "Force event failed", uim.MessageTypes.ALERT)
-            uim.sendMessage("Event", "Failed: " .. tostring(err), uim.MessageTypes.LOGS)
+            msg:alert("Force event failed")
+            msg:logInfo("Failed: " .. tostring(err))
         end
         return true
     end
@@ -165,15 +167,15 @@ local cmd_positive = cmd:branch(
     function(args, flags)
         local ged = GetDirector()
         if not ged then
-            uim.sendMessage("Event", "No director. Must be in a junction", uim.MessageTypes.ERR)
+            msg:logErr("No director. Must be in a junction")
             return true
         end
         local ok, err = pcall(function() ged:ForcedPositiveEvent() end)
         if ok then
-            uim.sendMessage("Event", "Forced positive event", uim.MessageTypes.CHATLIKE)
+            msg:feedback("Forced positive event")
         else
-            uim.sendMessage("Event", "Force positive event failed", uim.MessageTypes.ALERT)
-            uim.sendMessage("Event", "Failed: " .. tostring(err), uim.MessageTypes.LOGS)
+            msg:alert("Force positive event failed")
+            msg:logInfo("Failed: " .. tostring(err))
         end
         return true
     end
@@ -190,7 +192,7 @@ local cmd_debug = cmd:branch(
     function(args, flags)
         local ged = GetDirector()
         if not ged then
-            uim.sendMessage("Event", "No director. Must be in a junction", uim.MessageTypes.ERR)
+            msg:logErr("No director. Must be in a junction")
             return true
         end
 
@@ -207,20 +209,20 @@ local cmd_debug = cmd:branch(
         end
 
         if #matches == 0 then
-            uim.sendMessage("Event", "No function matching: " .. search, uim.MessageTypes.ERR)
+            msg:logErr("No function matching: " .. search)
         elseif #matches == 1 then
             local ok, err = pcall(function() ged[matches[1]](ged) end)
             if ok then
-                uim.sendMessage("Event", "Called: " .. matches[1], uim.MessageTypes.CHATLIKE)
+                msg:feedback("Called: " .. matches[1])
             else
-                uim.sendMessage("Event", "Failed: " .. tostring(err), uim.MessageTypes.ERR)
+                msg:logErr("Failed: " .. tostring(err))
             end
         else
-            uim.sendMessage("Event", #matches .. " matches for '" .. search .. "':", uim.MessageTypes.ALERT)
+            msg:alert(#matches .. " matches for '" .. search .. "':")
             for _, f in ipairs(matches) do
-                uim.sendMessage("Event", f, uim.MessageTypes.CHATLIKE)
+                msg:feedback(f)
             end
-            uim.sendMessage("Event", "Be more specific", uim.MessageTypes.CHATLIKE)
+            msg:feedback("Be more specific")
         end
 
         return true

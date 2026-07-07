@@ -5,6 +5,8 @@
 local uim = require("uimanager")
 local cm = require("commandmanager")
 
+local msg = uim.newMessenger("UnlockLogs")
+
 local function Normalize(s)
     return s:lower():gsub("[%s%p%-]", "")
 end
@@ -12,7 +14,7 @@ end
 local function GetLogBook()
     local lb = FindFirstOf("LogBook")
     if not lb or not lb:IsValid() then
-        uim.sendMessage("UnlockLogs", "LogBook not found", uim.MessageTypes.ERR)
+        msg:logErr("LogBook not found")
         return nil
     end
     return lb
@@ -22,7 +24,7 @@ end
 local function CollectEntries()
     local all = FindAllOf("LogBookDataGeneric")
     if not all then
-        uim.sendMessage("UnlockLogs", "No LogBookDataGeneric objects found in memory", uim.MessageTypes.ERR)
+        msg:logErr("No LogBookDataGeneric objects found in memory")
         return nil
     end
 
@@ -74,7 +76,7 @@ local function HandleAll(includeHidden)
         for _, obj in ipairs(all) do
             pcall(function() obj.bCanAddToLogBook = true end)
         end
-        uim.sendMessage("UnlockLogs", "Flipped bCanAddToLogBook on " .. #all .. " entries", uim.MessageTypes.LOGS)
+        msg:logInfo("Flipped bCanAddToLogBook on " .. #all .. " entries")
     end
 
     -- Pass 2: AddEntry on all LogBookDataGeneric
@@ -83,7 +85,7 @@ local function HandleAll(includeHidden)
         local ok = pcall(function() lb:AddEntry(obj) end)
         if ok then count1 = count1 + 1 end
     end
-    uim.sendMessage("UnlockLogs", "AddEntry pass 1: " .. count1 .. "/" .. #all, uim.MessageTypes.LOGS)
+    msg:logInfo("AddEntry pass 1: " .. count1 .. "/" .. #all)
 
     -- Pass 3: GetAllLoggableObjects + AddEntry for embedded entries
     local count2 = 0
@@ -99,12 +101,12 @@ local function HandleAll(includeHidden)
             end)
         end
     end
-    uim.sendMessage("UnlockLogs", "AddEntry pass 2: " .. count2 .. " loggable objects", uim.MessageTypes.LOGS)
+    msg:logInfo("AddEntry pass 2: " .. count2 .. " loggable objects")
 
     if includeHidden then
-        uim.sendMessage("UnlockLogs", "You must save then load your save to see hidden entries. Closing the game will make hidden entries hidden again.", uim.MessageTypes.CHATLIKE, 15.0)
+        msg:feedback("You must save then load your save to see hidden entries. Closing the game will make hidden entries hidden again.", 15.0)
     end
-    uim.sendMessage("UnlockLogs", "Unlocked all logbook entries.", uim.MessageTypes.CHATLIKE)
+    msg:feedback("Unlocked all logbook entries.")
 end
 
 -- ============================================================
@@ -112,7 +114,7 @@ end
 -- ============================================================
 local function HandleName(args)
     if not args[1] then
-        uim.sendMessage("UnlockLogs", "Usage: unlocklogs name <display_name>", uim.MessageTypes.ALERT)
+        msg:alert("Usage: unlocklogs name <display_name>")
         return
     end
 
@@ -133,23 +135,23 @@ local function HandleName(args)
     end
 
     if #matches == 0 then
-        uim.sendMessage("UnlockLogs", "No matching logbook entry found.", uim.MessageTypes.ALERT)
-        uim.sendMessage("UnlockLogs", "No matches for '" .. rawName .. "'. Try 'unlocklogs id' with an asset path.", uim.MessageTypes.CHATLIKE)
+        msg:alert("No matching logbook entry found.")
+        msg:feedback("No matches for '" .. rawName .. "'. Try 'unlocklogs id' with an asset path.")
         return
     end
 
     if #matches == 1 then
         if UnlockEntry(lb, matches[1]) then
-            uim.sendMessage("UnlockLogs", "Unlocked: " .. matches[1].displayName, uim.MessageTypes.CHATLIKE)
+            msg:feedback("Unlocked: " .. matches[1].displayName)
         else
-            uim.sendMessage("UnlockLogs", "Unlock failed for: " .. matches[1].displayName, uim.MessageTypes.ERR)
+            msg:logErr("Unlock failed for: " .. matches[1].displayName)
         end
     else
         local outputString = #matches .. " entries match '" .. rawName .. "':\n"
         for i, entry in ipairs(matches) do
             outputString = outputString .. "  [" .. i .. "] " .. entry.displayName .. " → " .. tostring(entry.path) .. "\n"
         end
-        uim.sendMessage("UnlockLogs", outputString .. "Use 'unlocklogs id <path>' to unlock a specific one.", uim.MessageTypes.CHATLIKE, 30.0, true)
+        msg:feedback(outputString .. "Use 'unlocklogs id <path>' to unlock a specific one.", 30.0, "\n")
     end
 end
 
@@ -158,7 +160,7 @@ end
 -- ============================================================
 local function HandleId(args)
     if not args[1] then
-        uim.sendMessage("UnlockLogs", "Usage: unlocklogs id <asset_path>", uim.MessageTypes.ALERT)
+        msg:alert("Usage: unlocklogs id <asset_path>")
         return
     end
 
@@ -179,15 +181,15 @@ local function HandleId(args)
     end
 
     if not match then
-        uim.sendMessage("UnlockLogs", "Entry not found", uim.MessageTypes.ALERT)
-        uim.sendMessage("UnlockLogs", "No loaded entry found with path: " .. path, uim.MessageTypes.CHATLIKE)
+        msg:alert("Entry not found")
+        msg:feedback("No loaded entry found with path: " .. path)
         return
     end
 
     if UnlockEntry(lb, match) then
-        uim.sendMessage("UnlockLogs", "Unlocked: " .. match.displayName .. " (" .. match.assetName .. ")", uim.MessageTypes.CHATLIKE)
+        msg:feedback("Unlocked: " .. match.displayName .. " (" .. match.assetName .. ")")
     else
-        uim.sendMessage("UnlockLogs", "Unlock failed for: " .. match.displayName, uim.MessageTypes.ERR)
+        msg:logErr("Unlock failed for: " .. match.displayName)
     end
 end
 

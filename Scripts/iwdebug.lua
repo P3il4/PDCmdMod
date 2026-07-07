@@ -23,6 +23,8 @@
 local uim = require("uimanager")
 local cm = require("commandmanager")
 
+local msg = uim.newMessenger("Widget")
+
 local activeWidgets = {}  -- { index, path, widget }
 local nextIndex = 1
 
@@ -38,7 +40,7 @@ local EXTENDED_BASE_PATHS = {
 RegisterHook("/Script/Engine.PlayerController:ClientRestart", function()
     activeWidgets = {}
     nextIndex = 1
-    uim.sendMessage("Widget", "Level reloaded, widget list cleared", uim.MessageTypes.LOGS)
+    msg:logInfo("Level reloaded, widget list cleared")
 end)
 
 local function GetPlayerController()
@@ -80,7 +82,7 @@ end
 local function OpenWidget(fullPath)
     local PC = GetPlayerController()
     if not PC then
-        uim.sendMessage("Widget", "No valid PlayerController found", uim.MessageTypes.ERR)
+        msg:logErr("No valid PlayerController found")
         return false
     end
 
@@ -96,7 +98,7 @@ local function OpenWidget(fullPath)
     end)
 
     if not ok or not result then
-        uim.sendMessage("Widget", "Failed to open: " .. fullPath, uim.MessageTypes.LOGS)
+        msg:logInfo("Failed to open: " .. fullPath)
         return false
     end
 
@@ -107,7 +109,7 @@ local function OpenWidget(fullPath)
     -- Switch to UI input mode so widget receives keypresses
     -- SetUIInputMode(PC)
 
-    uim.sendMessage("Widget", "[" .. entry.index .. "] Opened: " .. fullPath, uim.MessageTypes.CHATLIKE)
+    msg:feedback("[" .. entry.index .. "] Opened: " .. fullPath)
     return true
 end
 
@@ -116,9 +118,9 @@ local function CloseWidget(index)
         if entry.index == index then
             local ok, err = pcall(function() entry.widget:RemoveFromParent() end)
             if ok then
-                uim.sendMessage("Widget", "[" .. index .. "] Closed: " .. entry.path, uim.MessageTypes.CHATLIKE)
+                msg:feedback("[" .. index .. "] Closed: " .. entry.path)
             else
-                uim.sendMessage("Widget", "RemoveFromParent failed: " .. tostring(err), uim.MessageTypes.ERR)
+                msg:logErr("RemoveFromParent failed: " .. tostring(err))
             end
             table.remove(activeWidgets, i)
 
@@ -130,12 +132,12 @@ local function CloseWidget(index)
             return
         end
     end
-    uim.sendMessage("Widget", "No widget with index " .. index, uim.MessageTypes.ALERT)
+    msg:alert("No widget with index " .. index)
 end
 
 local function CloseAll()
     if #activeWidgets == 0 then
-        uim.sendMessage("Widget", "No open widgets", uim.MessageTypes.CHATLIKE)
+        msg:feedback("No open widgets")
         return
     end
     for _, entry in ipairs(activeWidgets) do
@@ -148,19 +150,19 @@ local function CloseAll()
     -- local PC = GetPlayerController()
     -- if PC then SetGameInputMode(PC) end
 
-    uim.sendMessage("Widget", "Closed " .. count .. " widget(s)", uim.MessageTypes.CHATLIKE)
+    msg:feedback("Closed " .. count .. " widget(s)")
 end
 
 local function ListWidgets()
     if #activeWidgets == 0 then
-        uim.sendMessage("Widget", "No open widgets", uim.MessageTypes.CHATLIKE)
+        msg:feedback("No open widgets")
         return
     end
     local lines = "Open widgets:\n"
     for _, entry in ipairs(activeWidgets) do
         lines = lines .. "  [" .. entry.index .. "] " .. entry.path .. "\n"
     end
-    uim.sendMessage("Widget", lines, uim.MessageTypes.CHATLIKE, 20.0, true)
+    msg:feedback(lines, 20.0, "\n")
 end
 
 
@@ -175,7 +177,7 @@ local function HandleTips()
                  "  RunModDebug/UMG_Debug_RouteModDebugger - See route modifiers list. Seemingly non functional, consider route tools instead.\n" ..
                  "  [WitW DLC] UMG_ArtifactDebugger - Spawn prebuilt and custom artifacts\n" ..
                  "  [WitW DLC] UMG_DebugFigMischief - Make your garage look cooler"
-    uim.sendMessage("Widget", tips, uim.MessageTypes.CHATLIKE, 30.0, true)
+    msg:feedback(tips, 30.0, "\n")
 end
 
 
@@ -224,7 +226,7 @@ local cmd_open = cmd:branch(
         end
 
         if not success then
-            uim.sendMessage("Widget", "Failed to open widget: " .. name, uim.MessageTypes.ERR)
+            msg:logErr("Failed to open widget: " .. name)
         end
 
         return true
@@ -254,7 +256,7 @@ local cmd_close = cmd:branch(
     function(args, flags)
         local index = tonumber(args[1])
         if not index then
-            uim.sendMessage("Widget", "Usage: widget close <index>", uim.MessageTypes.ALERT)
+            msg:alert("Usage: widget close <index>")
             return true
         end
         CloseWidget(index)

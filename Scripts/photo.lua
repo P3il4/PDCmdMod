@@ -39,6 +39,8 @@ end)
 local uim = require("uimanager")
 local cm = require("commandmanager")
 
+local msg = uim.newMessenger("Photo")
+
 local DEFAULTS = {
     MovementSensitivity = 7.5,
     RotationSensitivity = 1.0,
@@ -172,12 +174,12 @@ local cmd_speed = cmd:branch(
         local cam = GetCamera()
         local val = tonumber(args[1])
         if val == nil then
-            uim.sendMessage("Photo", "Invalid speed", uim.MessageTypes.ALERT)
+            msg:alert("Invalid speed")
             return true
         end
         if cam then
             cam.MovementSensitivity = args[1]
-            uim.sendMessage("Photo", "Movement speed set to " .. args[1], uim.MessageTypes.CHATLIKE)
+            msg:feedback("Movement speed set to " .. args[1])
         end
         return true
     end
@@ -194,12 +196,12 @@ local cmd_rot = cmd:branch(
         local cam = GetCamera()
         local val = tonumber(args[1])
         if val == nil then
-            uim.sendMessage("Photo", "Invalid speed", uim.MessageTypes.ALERT)
+            msg:alert("Invalid speed")
             return true
         end
         if cam then
             cam.RotationSensitivity = args[1]
-            uim.sendMessage("Photo", "Rotation speed set to " .. args[1], uim.MessageTypes.CHATLIKE)
+            msg:feedback("Rotation speed set to " .. args[1])
         end
         return true
     end
@@ -216,7 +218,7 @@ local cmd_limits = cmd:branch(
         local cam = GetCamera()
         if cam then
             cam.bUseMaximumDistance = not cam.bUseMaximumDistance
-            uim.sendMessage("Photo", "Distance limit: " .. (cam.bUseMaximumDistance and "enabled" or "disabled"), uim.MessageTypes.CHATLIKE)
+            msg:feedback("Distance limit: " .. (cam.bUseMaximumDistance and "enabled" or "disabled"))
         end
         return true
     end
@@ -238,10 +240,10 @@ local cmd_preset = cmd:branch(
                 cam.MovementSensitivity = preset.MovementSensitivity
                 cam.RotationSensitivity = preset.RotationSensitivity
                 cam.bUseMaximumDistance = preset.bUseMaximumDistance
-                uim.sendMessage("Photo", "Applied preset '" .. presetName, uim.MessageTypes.CHATLIKE)
+                msg:feedback("Applied preset '" .. presetName)
             else
-                uim.sendMessage("Photo", "Preset unknown", uim.MessageTypes.ALERT)
-                uim.sendMessage("Photo", "Use 'photo preset list' to see available presets.", uim.MessageTypes.CHATLIKE)
+                msg:alert("Preset unknown")
+                msg:feedback("Use 'photo preset list' to see available presets.")
                 return true
             end
         end
@@ -257,9 +259,9 @@ local cmd_preset_list = cmd_preset:branch(
         flags_syntax = nil
     },
     function(args, flags)
-        uim.sendMessage("Photo", "Available presets:", uim.MessageTypes.CHATLIKE)
+        msg:feedback("Available presets:")
         for name, data in pairs(PRESETS) do
-            uim.sendMessage("Photo", "  " .. name .. " - " .. data.description, uim.MessageTypes.CHATLIKE)
+            msg:feedback("  " .. name .. " - " .. data.description)
         end
         return true
     end
@@ -278,7 +280,7 @@ local cmd_reset = cmd:branch(
             cam.MovementSensitivity = DEFAULTS.MovementSensitivity
             cam.RotationSensitivity = DEFAULTS.RotationSensitivity
             cam.bUseMaximumDistance = DEFAULTS.bUseMaximumDistance
-            uim.sendMessage("Photo", "Reset to defaults", uim.MessageTypes.CHATLIKE)
+            msg:feedback("Reset to defaults")
         end
         return true
     end

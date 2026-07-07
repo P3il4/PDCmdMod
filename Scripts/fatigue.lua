@@ -29,7 +29,7 @@
 local uim = require("uimanager")
 local cm = require("commandmanager")
 
-local SRC = "Fatigue"
+local msg = uim.newMessenger("Fatigue")
 
 -- "ClassName /Full/Path.Obj" -> "/Full/Path.Obj" (nil on failure)
 local function PathOf(obj)
@@ -43,7 +43,7 @@ end
 local function GetHandInstance()
     local im = FindFirstOf("BP_InventoryManager_C")
     if not im or not im:IsValid() then
-        uim.sendMessage(SRC, "Inventory Manager not found. Is a save loaded?", uim.MessageTypes.ERR)
+        msg:logErr("Inventory Manager not found. Is a save loaded?")
         return nil
     end
 
@@ -52,7 +52,7 @@ local function GetHandInstance()
 
     local handSlot = handSlotOut["Hand Slot"]
     if not handSlot or not handSlot:IsValid() then
-        uim.sendMessage(SRC, "Nothing in hand. Hold an item first.", uim.MessageTypes.CHATLIKE)
+        msg:feedback("Nothing in hand. Hold an item first.")
         return nil
     end
 
@@ -70,7 +70,7 @@ local function GetHandInstance()
     end
 
     if not instance or not instance:IsValid() then
-        uim.sendMessage(SRC, "Hand item has no item instance.", uim.MessageTypes.ERR)
+        msg:logErr("Hand item has no item instance.")
         return nil
     end
     return instance
@@ -133,9 +133,7 @@ local function ResolveHeldComponent()
     local name = ItemDisplayName(instance)
     local matches = FindFatigueComponents(instance)
     if #matches == 0 then
-        uim.sendMessage(SRC,
-            name .. " has no fatigue (not an aging car part, or its part actor isn't loaded).",
-            uim.MessageTypes.CHATLIKE)
+        msg:feedback(name .. " has no fatigue (not an aging car part, or its part actor isn't loaded).")
         return nil
     end
 
@@ -154,22 +152,20 @@ end
 local function ReadFatigue(comp)
     local v = ReadFatigueQuiet(comp)
     if not v then
-        uim.sendMessage(SRC, "GetFatigue failed.", uim.MessageTypes.ERR)
+        msg:logErr("GetFatigue failed.")
     end
     return v
 end
 
--- Show a readout toast. CHATLIKE renders the stream in reverse, so
--- forceSplitNewlines sends the lines bottom-up for us.
+-- Show a readout toast.
 local function ShowReadout(name, v)
     local pctText = (type(v.percent) == "number") and string.format("%.0f%%", v.percent * 100) or "?"
     local barText = (type(v.fatigue) == "number" and type(v.max) == "number")
         and string.format("%.1f / %.1f", v.fatigue, v.max) or "?"
 
-    uim.sendMessage(SRC, string.format(
+    msg:feedback(string.format(
         "Fatigue of %s: %s (%s)",
-        name, barText, pctText),
-        uim.MessageTypes.CHATLIKE, 12.0, true)
+        name, barText, pctText), 12.0)
 end
 
 -- ============================================================
@@ -187,7 +183,7 @@ end
 local function HandleSet(args)
     local value = tonumber(args[1])
     if not value then
-        uim.sendMessage(SRC, "Usage: fatigue set <number>", uim.MessageTypes.ALERT)
+        msg:alert("Usage: fatigue set <number>")
         return true
     end
     local comp, name = ResolveHeldComponent()
@@ -195,7 +191,7 @@ local function HandleSet(args)
 
     local ok, err = pcall(function() comp:SetFatigue(value) end)
     if not ok then
-        uim.sendMessage(SRC, "SetFatigue failed: " .. tostring(err), uim.MessageTypes.ERR)
+        msg:logErr("SetFatigue failed: " .. tostring(err))
         return true
     end
 
@@ -207,7 +203,7 @@ end
 local function HandleAdd(args)
     local delta = tonumber(args[1])
     if not delta then
-        uim.sendMessage(SRC, "Usage: fatigue add <number> (negative to subtract)", uim.MessageTypes.ALERT)
+        msg:alert("Usage: fatigue add <number> (negative to subtract)")
         return true
     end
     local comp, name = ResolveHeldComponent()
@@ -215,7 +211,7 @@ local function HandleAdd(args)
 
     local ok, err = pcall(function() comp:AddFatigue(delta) end)
     if not ok then
-        uim.sendMessage(SRC, "AddFatigue failed: " .. tostring(err), uim.MessageTypes.ERR)
+        msg:logErr("AddFatigue failed: " .. tostring(err))
         return true
     end
 
@@ -231,7 +227,7 @@ local function HandleAge()
     local v = ReadFatigue(comp)
     if not v then return true end
     if type(v.max) ~= "number" then
-        uim.sendMessage(SRC, "Could not read the max fatigue threshold.", uim.MessageTypes.ERR)
+        msg:logErr("Could not read the max fatigue threshold.")
         return true
     end
 
@@ -244,11 +240,11 @@ local function HandleAge()
 
     local ok, err = pcall(function() comp:AddFatigue(delta + 0.01) end)
     if not ok then
-        uim.sendMessage(SRC, "AddFatigue failed: " .. tostring(err), uim.MessageTypes.ERR)
+        msg:logErr("AddFatigue failed: " .. tostring(err))
         return true
     end
 
-    uim.sendMessage(SRC, "Aged " .. name .. " — fatigue driven to threshold, the game should now roll its age effect.", uim.MessageTypes.LOGS)
+    msg:logInfo("Aged " .. name .. " — fatigue driven to threshold, the game should now roll its age effect.")
     local v2 = ReadFatigue(comp)
     if v2 then ShowReadout(name, v2) end
     return true
@@ -261,7 +257,7 @@ end
 local function GetUserSettings()
     local s = FindFirstOf("DrivingGameUserSettings")
     if not s or not s:IsValid() then
-        uim.sendMessage(SRC, "DrivingGameUserSettings not found.", uim.MessageTypes.ERR)
+        msg:logErr("DrivingGameUserSettings not found.")
         return nil
     end
     return s
@@ -275,17 +271,16 @@ local function HandleRateGet()
     pcall(function() rate = s.FatigueRateScale end)
     pcall(function() disabled = s.bDisableFatigueEffects end)
 
-    uim.sendMessage(SRC, string.format(
+    msg:feedback(string.format(
         "Global fatigue rate: %s (1.0 = normal)\nFatigue effects disabled: %s",
-        tostring(rate), tostring(disabled)),
-        uim.MessageTypes.CHATLIKE, 10.0, true)
+        tostring(rate), tostring(disabled)), 10.0, "\n")
     return true
 end
 
 local function HandleRateSet(args)
     local value = tonumber(args[1])
     if not value then
-        uim.sendMessage(SRC, "Usage: fatigue rate set <number> (1.0 = normal, 0 = no fatigue gain)", uim.MessageTypes.ALERT)
+        msg:alert("Usage: fatigue rate set <number> (1.0 = normal, 0 = no fatigue gain)")
         return true
     end
     local s = GetUserSettings()
@@ -293,13 +288,13 @@ local function HandleRateSet(args)
 
     local ok, err = pcall(function() s.FatigueRateScale = value end)
     if not ok then
-        uim.sendMessage(SRC, "Failed to set fatigue rate: " .. tostring(err), uim.MessageTypes.ERR)
+        msg:logErr("Failed to set fatigue rate: " .. tostring(err))
         return true
     end
 
     local readback
     pcall(function() readback = s.FatigueRateScale end)
-    uim.sendMessage(SRC, "Global fatigue rate set to " .. tostring(readback), uim.MessageTypes.CHATLIKE)
+    msg:feedback("Global fatigue rate set to " .. tostring(readback))
     return true
 end
 
@@ -337,7 +332,7 @@ local function HandleDump()
     end
     print(LOG_PREPEND .. "[Fatigue] ---- end dump ----")
 
-    uim.sendMessage(SRC, "Dumped " .. #matches .. " fatigue component(s) for " .. name .. " to the UE4SS console.", uim.MessageTypes.CHATLIKE)
+    msg:feedback("Dumped " .. #matches .. " fatigue component(s) for " .. name .. " to the UE4SS console.")
     return true
 end
 

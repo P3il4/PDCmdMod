@@ -24,7 +24,7 @@ require("fatigue")
 require("scanner")
 
 
-local function HandleIntroduction(mode)
+local function HandleIntroduction()
     local message = [[Welcome to PDCmdMod by Perru (@perru_ on discord). Run 'pdcmdmod credits" to see full credits!
 Open the command line by pressing F10. This message can be viewed again by running the command 'pdcmdmod'.
  
@@ -41,7 +41,7 @@ This project is under the MIT license. A copy has been included in the LICENSE f
 end
 
 
-local function HandleShortlist(mode)
+local function HandleShortlist()
     local commands = cm.MANAGER:commands()
     local names = {}
 
@@ -51,7 +51,7 @@ local function HandleShortlist(mode)
 
     local result = table.concat(names, ", ")
 
-    uim.sendMessage("Main", "Commands from PDCmdMod by Perru (@perru_ on discord) (short list): \n\t" .. result .. "\nTip: run 'pdcmdmod help <command> [subcommands/arguments...]' to get more information.", mode, 30.0, true)
+    msg:feedback("Commands from PDCmdMod by Perru (@perru_ on discord) (short list): \n\t" .. result .. "\nTip: run 'pdcmdmod help <command> [subcommands/arguments...]' to get more information.", 30.0, "\n")
 end
 
 
@@ -123,7 +123,7 @@ local function HandleList(page, logsOnly)
             table.insert(displayedCommands, command)
         end
     elseif page < 0 or page > totalPages then
-        uim.sendMessage("Main", "Invalid page number. Give a page between 1 and " .. tostring(totalPages) .. ".", mode, 8.0, true)  -- Allow page 0 as 'see all'
+        msg:alert("Invalid page number. Give a page between 1 and " .. tostring(totalPages) .. ".")
     else
         for i, command in ipairs(sortedCommands) do
             local entryPage = math.ceil(i / ENTRIES_PER_PAGE)
@@ -158,11 +158,11 @@ local function HandleList(page, logsOnly)
     end
 end
 
-local function HandleCredits(mode)
-    uim.sendMessage("Main", "PDCmdMod by Perru (@perru_ on discord).\n" ..
-                            "This mod is available on github: https://github.com/MrPerruche/PDCmdMod\n \n" ..
-                            "Thanks to Shruc for the expedition setlevel command."
-    , mode, 15.0, true)
+local function HandleCredits()
+    msg:feedback("PDCmdMod by Perru (@perru_ on discord).\n" ..
+                    "This mod is available on github: https://github.com/MrPerruche/PDCmdMod\n \n" ..
+                    "Thanks to Shruc for the expedition setlevel command."
+    , 15.0, "\n")
 end
 
 
@@ -178,7 +178,7 @@ cmd_help = cm.MANAGER:register(
         flags_syntax = nil
     },
     function(args, flags)
-        HandleIntroduction(uim.MessageTypes.CHATLIKE)
+        HandleIntroduction()
         return true
     end
 )
@@ -191,7 +191,7 @@ cmd_help:branch(
         flags_syntax = nil
     },
     function(args, flags)
-        HandleShortlist(uim.MessageTypes.CHATLIKE)
+        HandleShortlist()
         return true
     end
 )
@@ -244,10 +244,8 @@ cmd_help:branch(
         local node = cm.MANAGER:find(args)
 
         if not node then
-            uim.sendMessage(
-                "Help",
-                ("Unknown command: %s"):format(table.concat(args, " ")),
-                uim.MessageTypes.ALERT
+            msg:alert(
+                ("Unknown command: %s"):format(table.concat(args, " "))
             )
             return false
         end
@@ -265,7 +263,7 @@ cmd_help:branch(
         flags_syntax = nil
     },
     function(args, flags)
-        HandleCredits(uim.MessageTypes.CHATLIKE)
+        HandleCredits()
         return true
     end
 )
@@ -381,22 +379,22 @@ RegisterConsoleCommandHandler("pdcmdmod", function(FullCommand, Parameters)
     if #Parameters == 1 then
 
         if Parameters[1]:lower() == "short" then
-            HandleHelpShort(uim.MessageTypes.CHATLIKE)
+            HandleHelpShort()
             return true
         end
 
         local page = tonumber(Parameters[1])
         if page then
-            HandleHelp(uim.MessageTypes.CHATLIKE, page, false)
+            HandleHelp(page, false)
         else
-            HandleHelp(uim.MessageTypes.CHATLIKE, 1, false)
+            HandleHelp(1, false)
         end
     else
-        HandleHelp(uim.MessageTypes.CHATLIKE, 1, false)
+        HandleHelp(1, false)
     end
 
     return true
 end)
 
-HandleHelpShort(uim.MessageTypes.LOGS)
+HandleHelpShort()
 ]]

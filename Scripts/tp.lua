@@ -31,6 +31,8 @@
 local uim = require("uimanager")
 local cm = require("commandmanager")
 
+local msg = uim.newMessenger("tp")
+
 -- mode name -> function returning the live actor (or nil)
 local TARGETS = {
     player = function() return FindFirstOf("PDP_MainCharacter_C") end,
@@ -82,20 +84,20 @@ end
 local function DoTeleport(mode, args, flags)
     local target = TARGETS[mode]()
     if not target then
-        uim.sendMessage("tp", NOT_FOUND[mode], uim.MessageTypes.ERR)
+        msg:logErr(NOT_FOUND[mode])
         return true
     end
 
     -- --relative-to value (string), or nil if the flag was absent.
     local relTo = flags and flags["relative-to"]
     if relTo == true then
-        uim.sendMessage("tp", "--relative-to needs a value: self, car, player or cam.", uim.MessageTypes.ALERT)
+        msg:alert("--relative-to needs a value: self, car, player or cam.")
         return true
     end
     if relTo then
         relTo = tostring(relTo):lower()
         if relTo ~= "self" and not TARGETS[relTo] then
-            uim.sendMessage("tp", "Invalid --relative-to: " .. relTo, uim.MessageTypes.ALERT)
+            msg:alert("Invalid --relative-to: " .. relTo)
             return true
         end
     end
@@ -104,7 +106,7 @@ local function DoTeleport(mode, args, flags)
     local coords
     if #args == 0 then
         if not relTo then
-            uim.sendMessage("tp", "No coordinates given. Provide 'x y z' or a --relative-to target.", uim.MessageTypes.ALERT)
+            msg:alert("No coordinates given. Provide 'x y z' or a --relative-to target.")
             return false  -- triggers help
         end
         coords = { { rel = true, val = 0 }, { rel = true, val = 0 }, { rel = true, val = 0 } }
@@ -113,13 +115,13 @@ local function DoTeleport(mode, args, flags)
         for i = 1, 3 do
             local c = ParseCoord(args[i])
             if not c then
-                uim.sendMessage("tp", "Invalid coordinate: " .. tostring(args[i]), uim.MessageTypes.ALERT)
+                msg:alert("Invalid coordinate: " .. tostring(args[i]))
                 return true
             end
             coords[i] = c
         end
     else
-        uim.sendMessage("tp", "Expected 3 coordinates (x y z), got " .. #args .. ".", uim.MessageTypes.ALERT)
+        msg:alert("Expected 3 coordinates (x y z), got " .. #args .. ".")
         return false  -- triggers help
     end
 
@@ -133,13 +135,13 @@ local function DoTeleport(mode, args, flags)
         else
             baseActor = TARGETS[relTo]()
             if not baseActor then
-                uim.sendMessage("tp", "Relative-to " .. (NOT_FOUND[relTo] or "target not found."), uim.MessageTypes.ERR)
+                msg:logErr("Relative-to " .. (NOT_FOUND[relTo] or "target not found."))
                 return true
             end
         end
         baseLoc = GetLoc(baseActor)
         if not baseLoc then
-            uim.sendMessage("tp", "Could not read the base position.", uim.MessageTypes.ERR)
+            msg:logErr("Could not read the base position.")
             return true
         end
     end
@@ -156,10 +158,10 @@ local function DoTeleport(mode, args, flags)
     end
 
     if SetLoc(target, newLoc) then
-        uim.sendMessage("tp", string.format("Teleported %s to (%.1f, %.1f, %.1f)",
-            mode, newLoc.X, newLoc.Y, newLoc.Z), uim.MessageTypes.CHATLIKE)
+        msg:feedback(string.format("Teleported %s to (%.1f, %.1f, %.1f)",
+            mode, newLoc.X, newLoc.Y, newLoc.Z))
     else
-        uim.sendMessage("tp", "Teleport failed.", uim.MessageTypes.ERR)
+        msg:logErr("Teleport failed.")
     end
     return true
 end
@@ -269,7 +271,7 @@ cm.cmd_debug:branch(
             end
         end
         print("[tpprobe] ---- end ----")
-        uim.sendMessage("tp", "Probe done. See UE4SS console output.", uim.MessageTypes.CHATLIKE)
+        msg:feedback("Probe done. See UE4SS console output.")
         return true
     end
 )

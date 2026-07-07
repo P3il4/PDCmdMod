@@ -1,6 +1,8 @@
 local uim = require("uimanager")
 local cm = require("commandmanager")
 
+local msg = uim.newMessenger("NoBorders")
+
 local invisibleEnabled = true
 local instabilityEnabled = true
 
@@ -36,13 +38,13 @@ local function ChangeState(invisible, instability) -- true / false to change, ni
     end
 
     if invisible == instability then
-        uim.sendMessage("NoBorders", "Invisible and instability walls are now " .. (invisible and "enabled" or "disabled") .. ".", uim.MessageTypes.CHATLIKE)
+        msg:feedback("Invisible and instability walls are now " .. (invisible and "enabled" or "disabled") .. ".")
     else
         if invisible ~= nil then
-            uim.sendMessage("NoBorders", "Invisible walls are now " .. (invisible and "enabled" or "disabled") .. ".", uim.MessageTypes.CHATLIKE)
+            msg:feedback("Invisible walls are now " .. (invisible and "enabled" or "disabled") .. ".")
         end
         if instability ~= nil then
-            uim.sendMessage("NoBorders", "Instability walls are now " .. (instability and "enabled" or "disabled") .. ".", uim.MessageTypes.CHATLIKE)
+            msg:feedback("Instability walls are now " .. (instability and "enabled" or "disabled") .. ".")
         end
     end
 end
@@ -73,8 +75,8 @@ local cmd_borders_toggle = cmd_borders:branch(
             instabilityEnabled = not instabilityEnabled
             ChangeState(invisibleEnabled, instabilityEnabled)  -- takes care of message
         else
-            uim.sendMessage("NoBorders", "Cannot toggle borders", uim.MessageTypes.CHATLIKE)
-            uim.sendMessage("NoBorders", "Cannot toggle border states because they are not equal. Use 'borders enable' or 'borders disable'.", uim.MessageTypes.CHATLIKE)
+            msg:feedback("Cannot toggle borders")
+            msg:feedback("Cannot toggle border states because they are not equal. Use 'borders enable' or 'borders disable'.")
         end
         return true
     end
@@ -101,8 +103,8 @@ local cmd_borders_enable = cmd_borders:branch(
             instabilityEnabled = true
             ChangeState(nil, true)
         else
-            uim.sendMessage("NoBorders", "Unknown target", uim.MessageTypes.ALERT)
-            uim.sendMessage("NoBorders", "Valid targets: invisible, instability. Leave empty to edit both.", uim.MessageTypes.CHATLIKE)
+            msg:alert("Unknown target")
+            msg:feedback("Valid targets: invisible, instability. Leave empty to edit both.")
         end
         return true
     end
@@ -128,8 +130,8 @@ local cmd_borders_disable = cmd_borders:branch(
             instabilityEnabled = false
             ChangeState(nil, false)
         else
-            uim.sendMessage("NoBorders", "Unknown target", uim.MessageTypes.ALERT)
-            uim.sendMessage("NoBorders", "Valid targets: invisible, instability. Leave empty to edit both.", uim.MessageTypes.CHATLIKE)
+            msg:alert("Unknown target")
+            msg:feedback("Valid targets: invisible, instability. Leave empty to edit both.")
         end
         return true
      end
